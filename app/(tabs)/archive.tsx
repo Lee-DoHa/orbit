@@ -1,0 +1,260 @@
+import { useState } from 'react';
+import { ScrollView, Text, View, StyleSheet, Pressable, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { GradientBackground } from '@/components/ui/GradientBackground';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+
+const MOCK_ENTRIES = [
+  {
+    id: '1',
+    date: '2월 27일',
+    dayOfWeek: '목',
+    emotions: ['긴장', '피로'],
+    intensity: 4,
+    context: '업무',
+    note: '프로젝트 마감이 다가와서...',
+    mirrorSummary: '업무 상황에서 긴장이 두드러졌습니다.',
+  },
+  {
+    id: '2',
+    date: '2월 26일',
+    dayOfWeek: '수',
+    emotions: ['안정', '만족'],
+    intensity: 2,
+    context: '자기계발',
+    note: '오랜만에 독서를 했다',
+    mirrorSummary: '자기계발을 통해 안정감을 경험했습니다.',
+  },
+  {
+    id: '3',
+    date: '2월 25일',
+    dayOfWeek: '화',
+    emotions: ['불안', '긴장'],
+    intensity: 4,
+    context: '업무',
+    note: '발표 준비',
+    mirrorSummary: '반복적인 업무 긴장 패턴이 감지됩니다.',
+  },
+  {
+    id: '4',
+    date: '2월 24일',
+    dayOfWeek: '월',
+    emotions: ['집중'],
+    intensity: 3,
+    context: '업무',
+    note: null,
+    mirrorSummary: '업무에 집중하는 시간이었습니다.',
+  },
+  {
+    id: '5',
+    date: '2월 23일',
+    dayOfWeek: '일',
+    emotions: ['설렘', '안정'],
+    intensity: 2,
+    context: '관계',
+    note: '친구와 좋은 시간',
+    mirrorSummary: '관계에서 긍정적 에너지를 얻었습니다.',
+  },
+];
+
+const EMOTION_COLORS: Record<string, string> = {
+  긴장: '#FFB84D',
+  불안: '#FF6B6B',
+  피로: '#7B8794',
+  안정: '#5CE0D8',
+  설렘: '#FF8FAB',
+  무기력: '#6B7280',
+  집중: '#4A9EFF',
+  만족: '#7FE5A0',
+  외로움: '#A78BFA',
+  혼란: '#F59E0B',
+};
+
+const INTENSITY_COLORS: Record<number, string> = {
+  1: '#5CE0D8',
+  2: '#7FE5A0',
+  3: '#FFD166',
+  4: '#FF9F43',
+  5: '#FF6B6B',
+};
+
+function IntensityDots({ value }: { value: number }) {
+  return (
+    <View style={entryStyles.dots}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View
+          key={i}
+          style={[
+            entryStyles.dot,
+            i <= value && {
+              backgroundColor: INTENSITY_COLORS[value] || '#FFD166',
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function EntryCard({ item, onPress }: { item: typeof MOCK_ENTRIES[0]; onPress: () => void }) {
+  return (
+    <Pressable style={entryStyles.card} onPress={onPress}>
+      <View style={entryStyles.dateCol}>
+        <Text style={entryStyles.dateText}>{item.date}</Text>
+        <Text style={entryStyles.dayText}>{item.dayOfWeek}</Text>
+      </View>
+      <View style={entryStyles.contentCol}>
+        <View style={entryStyles.emotionRow}>
+          {item.emotions.map((e) => (
+            <View
+              key={e}
+              style={[
+                entryStyles.emotionBadge,
+                { backgroundColor: (EMOTION_COLORS[e] || '#8E8EA0') + '20' },
+              ]}
+            >
+              <View
+                style={[
+                  entryStyles.emotionDot,
+                  { backgroundColor: EMOTION_COLORS[e] || '#8E8EA0' },
+                ]}
+              />
+              <Text
+                style={[
+                  entryStyles.emotionText,
+                  { color: EMOTION_COLORS[e] || '#8E8EA0' },
+                ]}
+              >
+                {e}
+              </Text>
+            </View>
+          ))}
+          <IntensityDots value={item.intensity} />
+        </View>
+        <Text style={entryStyles.contextTag}>{item.context}</Text>
+        {item.note && (
+          <Text style={entryStyles.note} numberOfLines={1}>
+            {item.note}
+          </Text>
+        )}
+      </View>
+      <Ionicons name="chevron-forward" size={16} color="#5A5A6E" />
+    </Pressable>
+  );
+}
+
+const FILTER_OPTIONS = ['전체', '긴장', '불안', '안정', '피로', '집중', '만족'];
+
+export default function ArchiveScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [filter, setFilter] = useState('전체');
+
+  const filtered =
+    filter === '전체'
+      ? MOCK_ENTRIES
+      : MOCK_ENTRIES.filter((e) => e.emotions.includes(filter));
+
+  return (
+    <GradientBackground>
+      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.header}>
+          <SectionHeader title="감정 기록" subtitle="축적된 나의 감정 여정" />
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterContent}
+        >
+          {FILTER_OPTIONS.map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setFilter(f)}
+              style={[styles.filterChip, filter === f && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
+                {f}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <EntryCard
+              item={item}
+              onPress={() => router.push(`/entry/${item.id}`)}
+            />
+          )}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      </View>
+    </GradientBackground>
+  );
+}
+
+const entryStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    gap: 12,
+  },
+  dateCol: { alignItems: 'center', width: 52 },
+  dateText: { color: '#F0F0F5', fontSize: 13, fontWeight: '600' },
+  dayText: { color: '#8E8EA0', fontSize: 11, marginTop: 2 },
+  contentCol: { flex: 1, gap: 6 },
+  emotionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  emotionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+  },
+  emotionDot: { width: 6, height: 6, borderRadius: 3 },
+  emotionText: { fontSize: 11, fontWeight: '500' },
+  dots: { flexDirection: 'row', gap: 3, marginLeft: 4 },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  contextTag: { color: '#8E8EA0', fontSize: 11 },
+  note: { color: '#5A5A6E', fontSize: 12 },
+});
+
+const styles = StyleSheet.create({
+  container: { flex: 1, paddingHorizontal: 24 },
+  header: { marginBottom: 8 },
+  filterScroll: { maxHeight: 44, marginBottom: 16 },
+  filterContent: { gap: 8, paddingRight: 24 },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(74,158,255,0.15)',
+    borderColor: '#4A9EFF',
+  },
+  filterText: { color: '#8E8EA0', fontSize: 13 },
+  filterTextActive: { color: '#4A9EFF', fontWeight: '600' },
+  list: { paddingBottom: 100 },
+  separator: { height: 8 },
+});

@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "orbit-temp",
-    "slug": "orbit-temp",
+    "name": "ORBIT",
+    "slug": "orbit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "orbittemp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "orbit",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0A0E1A"
     },
     "ios": {
       "supportsTablet": true
