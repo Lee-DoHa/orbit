@@ -9,6 +9,8 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { useCreateEntry, useMirrorAnalysis } from '@/hooks/useApi';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { CosmicButton } from '@/components/ui/CosmicButton';
@@ -27,23 +29,26 @@ import {
   type ContextId,
 } from '@/lib/constants';
 
-const MOCK_MIRROR = {
-  understanding: '업무 상황에서 긴장과 피로를 동시에 느끼고 계시는군요.',
-  structure: '최근 7일 중 4일, 업무 관련 긴장이 반복적으로 나타났습니다.',
-  suggestion: '오늘 퇴근 후 좋아하는 음료를 마시며 5분간 아무것도 하지 않는 시간을 가져보세요.',
-  question: '성과는 당신에게 어떤 의미인가요?',
+type MirrorResult = {
+  understanding: string;
+  structure: string;
+  suggestion: string;
+  question: string | null;
 };
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
+  const createEntry = useCreateEntry();
+  const mirror = useMirrorAnalysis();
+
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionId[]>([]);
   const [intensity, setIntensity] = useState(DEFAULT_INTENSITY);
   const [context, setContext] = useState<ContextId | null>(null);
   const [note, setNote] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [mirrorResult, setMirrorResult] = useState<typeof MOCK_MIRROR | null>(null);
+  const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
 
-  const canSubmit = selectedEmotions.length > 0;
+  const isLoading = createEntry.isPending || mirror.isPending;
+  const canSubmit = selectedEmotions.length > 0 && !isLoading;
 
   const handleToggleEmotion = useCallback((id: EmotionId) => {
     setSelectedEmotions((prev) =>
@@ -51,16 +56,23 @@ export default function TodayScreen() {
     );
   }, []);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
-    setIsLoading(true);
     setMirrorResult(null);
-    // Simulate AI call
-    setTimeout(() => {
-      setIsLoading(false);
-      setMirrorResult(MOCK_MIRROR);
-    }, 2000);
-  }, [canSubmit]);
+    try {
+      const entry = await createEntry.mutateAsync({
+        emotionIds: selectedEmotions,
+        intensity,
+        contextTag: context ?? undefined,
+        note: note || undefined,
+      });
+      const result = await mirror.mutateAsync(entry.id);
+      setMirrorResult(result);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+  }, [canSubmit, selectedEmotions, intensity, context, note, createEntry, mirror]);
 
   const handleReset = useCallback(() => {
     setSelectedEmotions([]);

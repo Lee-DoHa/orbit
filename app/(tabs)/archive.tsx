@@ -1,63 +1,11 @@
 import { useState } from 'react';
-import { ScrollView, Text, View, StyleSheet, Pressable, FlatList } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-
-const MOCK_ENTRIES = [
-  {
-    id: '1',
-    date: '2월 27일',
-    dayOfWeek: '목',
-    emotions: ['긴장', '피로'],
-    intensity: 4,
-    context: '업무',
-    note: '프로젝트 마감이 다가와서...',
-    mirrorSummary: '업무 상황에서 긴장이 두드러졌습니다.',
-  },
-  {
-    id: '2',
-    date: '2월 26일',
-    dayOfWeek: '수',
-    emotions: ['안정', '만족'],
-    intensity: 2,
-    context: '자기계발',
-    note: '오랜만에 독서를 했다',
-    mirrorSummary: '자기계발을 통해 안정감을 경험했습니다.',
-  },
-  {
-    id: '3',
-    date: '2월 25일',
-    dayOfWeek: '화',
-    emotions: ['불안', '긴장'],
-    intensity: 4,
-    context: '업무',
-    note: '발표 준비',
-    mirrorSummary: '반복적인 업무 긴장 패턴이 감지됩니다.',
-  },
-  {
-    id: '4',
-    date: '2월 24일',
-    dayOfWeek: '월',
-    emotions: ['집중'],
-    intensity: 3,
-    context: '업무',
-    note: null,
-    mirrorSummary: '업무에 집중하는 시간이었습니다.',
-  },
-  {
-    id: '5',
-    date: '2월 23일',
-    dayOfWeek: '일',
-    emotions: ['설렘', '안정'],
-    intensity: 2,
-    context: '관계',
-    note: '친구와 좋은 시간',
-    mirrorSummary: '관계에서 긍정적 에너지를 얻었습니다.',
-  },
-];
+import { useEntries } from '@/hooks/useApi';
 
 const EMOTION_COLORS: Record<string, string> = {
   긴장: '#FFB84D',
@@ -80,6 +28,17 @@ const INTENSITY_COLORS: Record<number, string> = {
   5: '#FF6B6B',
 };
 
+type EntryItem = {
+  id: string;
+  date: string;
+  dayOfWeek: string;
+  emotions: string[];
+  intensity: number;
+  context: string;
+  note: string | null;
+  mirrorSummary: string;
+};
+
 function IntensityDots({ value }: { value: number }) {
   return (
     <View style={entryStyles.dots}>
@@ -98,7 +57,7 @@ function IntensityDots({ value }: { value: number }) {
   );
 }
 
-function EntryCard({ item, onPress }: { item: typeof MOCK_ENTRIES[0]; onPress: () => void }) {
+function EntryCard({ item, onPress }: { item: EntryItem; onPress: () => void }) {
   return (
     <Pressable style={entryStyles.card} onPress={onPress}>
       <View style={entryStyles.dateCol}>
@@ -151,11 +110,12 @@ export default function ArchiveScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [filter, setFilter] = useState('전체');
+  const { data: entries = [], isLoading } = useEntries();
 
   const filtered =
     filter === '전체'
-      ? MOCK_ENTRIES
-      : MOCK_ENTRIES.filter((e) => e.emotions.includes(filter));
+      ? entries
+      : entries.filter((e: EntryItem) => e.emotions.includes(filter));
 
   return (
     <GradientBackground>
@@ -183,19 +143,25 @@ export default function ArchiveScreen() {
           ))}
         </ScrollView>
 
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <EntryCard
-              item={item}
-              onPress={() => router.push(`/entry/${item.id}`)}
-            />
-          )}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
+        {isLoading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color="#4A9EFF" />
+          </View>
+        ) : (
+          <FlatList
+            data={filtered}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <EntryCard
+                item={item}
+                onPress={() => router.push(`/entry/${item.id}`)}
+              />
+            )}
+            contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        )}
       </View>
     </GradientBackground>
   );
@@ -257,4 +223,5 @@ const styles = StyleSheet.create({
   filterTextActive: { color: '#4A9EFF', fontWeight: '600' },
   list: { paddingBottom: 100 },
   separator: { height: 8 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

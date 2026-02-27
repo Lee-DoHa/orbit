@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ORBIT Backend - Emotion Structuring App
+
+Parameters:
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: RDS master password
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OpenAI API key (leave empty for mock Mirror Engine)
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    MemorySize: 256
+    Timeout: 30
+    Environment:
+      Variables:
+        DB_HOST: !GetAtt OrbitDB.Endpoint.Address
+        DB_PORT: !GetAtt OrbitDB.Endpoint.Port
+        DB_NAME: orbit
+        DB_USER: orbit_admin
+        DB_PASSWORD: !Ref DBPassword
+
+Resources:
+  # --- Security Group ---
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL access for ORBIT
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 0.0.0.0/0
+
+  # --- RDS PostgreSQL ---
+  OrbitDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: orbit-db
+      Engine: postgres
+      EngineVersion: '16.12'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      DBName: orbit
+      MasterUsername: orbit_admin
+      MasterUserPassword: !Ref DBPassword
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+      BackupRetentionPeriod: 7
+      StorageType: gp2
+      Tags:
+        - Key: Project
+          Value: orbit
+
+  # --- Cognito ---
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: orbit-users
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: false
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: orbit-app
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
+
+  # --- Shared Lambda Layer ---
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: orbit-shared
+      ContentUri: layers/shared/
+      CompatibleRuntimes:
+        - nodejs20.x
+
+  # --- API Gateway ---
+  OrbitApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+
+  # --- Lambda Functions ---
+  EntriesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-entries
+      Handler: index.handler
+      CodeUri: functions/entries/
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        ListEntries:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /entries
+            Method: GET
+        CreateEntry:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /entries
+            Method: POST
+        GetEntry:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /entries/{id}
+            Method: GET
+        DeleteEntry:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /entries/{id}
+            Method: DELETE
+
+  MirrorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-mirror
+      Handler: index.handler
+      CodeUri: functions/mirror/
+      Timeout: 60
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+      Events:
+        Analyze:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /mirror
+            Method: POST
+
+  InsightsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-insights
+      Handler: index.handler
+      CodeUri: functions/insights/
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        Weekly:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /insights/weekly
+            Method: GET
+        Patterns:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /insights/patterns
+            Method: GET
+
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-users
+      Handler: index.handler
+      CodeUri: functions/users/
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        GetMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /users/me
+            Method: GET
+        UpdateMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /users/me
+            Method: PUT
+
+  SeedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-seed
+      Handler: index.handler
+      CodeUri: functions/seed/
+      Timeout: 60
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        Seed:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /admin/seed
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${OrbitApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+  DBEndpoint:
+    Description: RDS endpoint
+    Value: !GetAtt OrbitDB.Endpoint.Address

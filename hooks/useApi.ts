@@ -1,0 +1,60 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+
+export function useEntries(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: ['entries', params],
+    queryFn: () => api.entries.list(params),
+  });
+}
+
+export function useEntry(id: string) {
+  return useQuery({
+    queryKey: ['entries', id],
+    queryFn: () => api.entries.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.entries.create,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['entries'] }),
+  });
+}
+
+export function useMirrorAnalysis() {
+  return useMutation({
+    mutationFn: api.mirror.analyze,
+  });
+}
+
+export function useWeeklyInsights() {
+  return useQuery({
+    queryKey: ['insights', 'weekly'],
+    queryFn: api.insights.weekly,
+  });
+}
+
+export function usePatterns() {
+  return useQuery({
+    queryKey: ['insights', 'patterns'],
+    queryFn: api.insights.patterns,
+  });
+}
+
+export function useUserProfile() {
+  return useQuery({
+    queryKey: ['user', 'me'],
+    queryFn: api.users.me,
+  });
+}
+
+export function useUpdateUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.users.update,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'me'] }),
+  });
+}

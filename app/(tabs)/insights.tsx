@@ -1,25 +1,18 @@
-import { ScrollView, Text, View, StyleSheet, Dimensions } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useWeeklyInsights, usePatterns } from '@/hooks/useApi';
 
-const MOCK_WEEK_DATA = [
-  { day: '월', value: 3.2 },
-  { day: '화', value: 2.8 },
-  { day: '수', value: 4.1 },
-  { day: '목', value: 3.5 },
-  { day: '금', value: 2.4 },
-  { day: '토', value: 1.9 },
-  { day: '일', value: 2.1 },
-];
+const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
-function MiniChart() {
+function MiniChart({ data }: { data: { day: string; value: number }[] }) {
   const maxVal = 5;
   const chartHeight = 120;
   return (
     <View style={chartStyles.container}>
-      {MOCK_WEEK_DATA.map((d, i) => (
+      {data.map((d) => (
         <View key={d.day} style={chartStyles.barGroup}>
           <View style={chartStyles.barTrack}>
             <View
@@ -41,6 +34,29 @@ function MiniChart() {
 
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
+  const { data: weekly, isLoading: weeklyLoading } = useWeeklyInsights();
+  const { data: patterns, isLoading: patternsLoading } = usePatterns();
+
+  const isLoading = weeklyLoading || patternsLoading;
+
+  if (isLoading) {
+    return (
+      <GradientBackground>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top + 16 }]}>
+          <ActivityIndicator size="large" color="#4A9EFF" />
+        </View>
+      </GradientBackground>
+    );
+  }
+
+  const stabilityIndex = weekly?.stabilityIndex ?? 0;
+  const stabilityChange = weekly?.stabilityChange ?? 0;
+  const chartData: { day: string; value: number }[] = weekly?.weeklyChart ?? DAY_LABELS.map((d) => ({ day: d, value: 0 }));
+  const topEmotion = weekly?.topEmotion ?? '-';
+  const avgIntensity = weekly?.avgIntensity ?? 0;
+  const topContext = weekly?.topContext ?? '-';
+
+  const firstPattern = patterns?.[0];
 
   return (
     <GradientBackground>
@@ -54,51 +70,57 @@ export default function InsightsScreen() {
         <GlassCard style={styles.stabilityCard}>
           <Text style={styles.stabilityLabel}>안정도 지수</Text>
           <View style={styles.stabilityRow}>
-            <Text style={styles.stabilityNumber}>72</Text>
+            <Text style={styles.stabilityNumber}>{stabilityIndex}</Text>
             <View style={styles.stabilityBadge}>
-              <Text style={styles.stabilityChange}>+5</Text>
+              <Text style={styles.stabilityChange}>
+                {stabilityChange >= 0 ? `+${stabilityChange}` : String(stabilityChange)}
+              </Text>
             </View>
           </View>
-          <Text style={styles.stabilityDesc}>지난주 대비 안정도가 높아졌어요</Text>
+          <Text style={styles.stabilityDesc}>
+            {stabilityChange >= 0
+              ? '지난주 대비 안정도가 높아졌어요'
+              : '지난주 대비 안정도가 낮아졌어요'}
+          </Text>
         </GlassCard>
 
         <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>주간 감정 강도</Text>
-          <MiniChart />
+          <MiniChart data={chartData} />
         </GlassCard>
 
         <GlassCard style={styles.statCard}>
           <Text style={styles.cardTitle}>최근 7일 요약</Text>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>긴장</Text>
+              <Text style={styles.statValue}>{topEmotion}</Text>
               <Text style={styles.statLabel}>가장 잦은 감정</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>3.2</Text>
+              <Text style={styles.statValue}>{avgIntensity}</Text>
               <Text style={styles.statLabel}>평균 강도</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>업무</Text>
+              <Text style={styles.statValue}>{topContext}</Text>
               <Text style={styles.statLabel}>주요 상황</Text>
             </View>
           </View>
         </GlassCard>
 
-        <GlassCard variant="highlight" style={styles.patternCard}>
-          <View style={styles.patternHeader}>
-            <Text style={styles.patternIcon}>🔍</Text>
-            <Text style={styles.patternTitle}>패턴 발견</Text>
-          </View>
-          <Text style={styles.patternText}>
-            최근 7일 중 4일, '업무' 상황에서 '긴장'이 반복되었습니다.
-          </Text>
-          <Text style={styles.patternHint}>
-            업무와 무관한 활동을 20분 계획해보세요.
-          </Text>
-        </GlassCard>
+        {firstPattern && (
+          <GlassCard variant="highlight" style={styles.patternCard}>
+            <View style={styles.patternHeader}>
+              <Text style={styles.patternIcon}>🔍</Text>
+              <Text style={styles.patternTitle}>패턴 발견</Text>
+            </View>
+            <Text style={styles.patternText}>{firstPattern.description}</Text>
+            {firstPattern.suggestion && (
+              <Text style={styles.patternHint}>{firstPattern.suggestion}</Text>
+            )}
+          </GlassCard>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -140,6 +162,7 @@ const chartStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 100 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   stabilityCard: { marginBottom: 16 },
   stabilityLabel: { color: '#8E8EA0', fontSize: 13, marginBottom: 8 },
   stabilityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

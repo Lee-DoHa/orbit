@@ -1,20 +1,26 @@
-import { ScrollView, Text, View, StyleSheet, Pressable, Switch } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useUserProfile, useUpdateUser } from '@/hooks/useApi';
+import { signOut } from '@/lib/auth';
+
+const PERSONA_OPTIONS = ['차분함', '따뜻함', '직접적', '유머러스'];
 
 type SettingRowProps = {
   icon: string;
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
+  onPress?: () => void;
 };
 
-function SettingRow({ icon, title, subtitle, right }: SettingRowProps) {
+function SettingRow({ icon, title, subtitle, right, onPress }: SettingRowProps) {
   return (
-    <Pressable style={styles.row}>
+    <Pressable style={styles.row} onPress={onPress}>
       <Ionicons name={icon as any} size={22} color="#8E8EA0" />
       <View style={styles.rowText}>
         <Text style={styles.rowTitle}>{title}</Text>
@@ -27,7 +33,45 @@ function SettingRow({ icon, title, subtitle, right }: SettingRowProps) {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [reminder, setReminder] = useState(true);
+
+  const { data: user, isLoading } = useUserProfile();
+  const updateUser = useUpdateUser();
+
+  const displayName = user?.display_name ?? '-';
+  const plan = user?.plan ?? 'Free';
+  const currentPersona = user?.persona ?? '차분함';
+
+  function cyclePersona() {
+    const idx = PERSONA_OPTIONS.indexOf(currentPersona);
+    const next = PERSONA_OPTIONS[(idx + 1) % PERSONA_OPTIONS.length];
+    updateUser.mutate({ persona: next });
+  }
+
+  async function handleLogout() {
+    Alert.alert('로그아웃', '정말 로그아웃하시겠어요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '로그아웃',
+        style: 'destructive',
+        onPress: async () => {
+          await signOut();
+          router.replace('/auth');
+        },
+      },
+    ]);
+  }
+
+  if (isLoading) {
+    return (
+      <GradientBackground>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top + 16 }]}>
+          <ActivityIndicator size="large" color="#4A9EFF" />
+        </View>
+      </GradientBackground>
+    );
+  }
 
   return (
     <GradientBackground>
@@ -40,8 +84,8 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>계정</Text>
-          <SettingRow icon="person-outline" title="프로필" subtitle="이도하" />
-          <SettingRow icon="card-outline" title="구독 관리" subtitle="Free" />
+          <SettingRow icon="person-outline" title="프로필" subtitle={displayName} />
+          <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} />
         </View>
 
         <View style={styles.section}>
@@ -58,7 +102,12 @@ export default function SettingsScreen() {
               />
             }
           />
-          <SettingRow icon="happy-outline" title="AI 페르소나" subtitle="차분함" />
+          <SettingRow
+            icon="happy-outline"
+            title="AI 페르소나"
+            subtitle={currentPersona}
+            onPress={cyclePersona}
+          />
         </View>
 
         <View style={styles.section}>
@@ -73,6 +122,11 @@ export default function SettingsScreen() {
           <SettingRow icon="information-circle-outline" title="버전" subtitle="1.0.0" right={null} />
         </View>
 
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color="#FF6B6B" />
+          <Text style={styles.logoutText}>로그아웃</Text>
+        </Pressable>
+
         <View style={{ height: 32 }} />
       </ScrollView>
     </GradientBackground>
@@ -82,6 +136,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 100 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: {
     marginBottom: 24,
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -101,4 +156,20 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowTitle: { color: '#F0F0F5', fontSize: 15 },
   rowSubtitle: { color: '#8E8EA0', fontSize: 12, marginTop: 2 },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 107, 107, 0.08)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.15)',
+  },
+  logoutText: {
+    color: '#FF6B6B',
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

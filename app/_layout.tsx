@@ -1,11 +1,47 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { checkSession, getAccessToken } from '@/lib/auth';
+import { useUserStore } from '@/stores/userStore';
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
+  const [ready, setReady] = useState(false);
+  const setUser = useUserStore((s) => s.setUser);
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const hasSession = await checkSession();
+        if (hasSession) {
+          // Restore session - parse token to get user info
+          const token = await getAccessToken();
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setUser({
+            id: payload.sub,
+            email: payload.email,
+            displayName: payload.email?.split('@')[0] || '',
+          });
+        }
+      } catch {
+        // No valid session
+      } finally {
+        setReady(true);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (ready && !isAuthenticated) {
+      router.replace('/auth');
+    }
+  }, [ready, isAuthenticated]);
+
+  if (!ready) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="light" />
@@ -16,6 +52,7 @@ export default function RootLayout() {
           animation: 'fade',
         }}
       >
+        <Stack.Screen name="auth" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="entry/[id]"

@@ -1,23 +1,9 @@
-import { ScrollView, Text, View, StyleSheet } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { MirrorCard } from '@/components/mirror/MirrorCard';
-
-const MOCK_DETAIL = {
-  date: '2025년 2월 27일 목요일',
-  emotions: ['긴장', '피로'],
-  intensity: 4,
-  context: '업무',
-  note: '프로젝트 마감이 다가와서 계속 긴장 상태. 회의도 많았고 집중이 어려웠다.',
-  mirror: {
-    understanding: '업무 상황에서 긴장과 피로를 동시에 느끼고 계시는군요.',
-    structure: '최근 7일 중 4일, 업무 관련 긴장이 반복적으로 나타났습니다.',
-    suggestion: '오늘 퇴근 후 좋아하는 음료를 마시며 5분간 아무것도 하지 않는 시간을 가져보세요.',
-    question: '성과는 당신에게 어떤 의미인가요?',
-  },
-  stability: 68,
-};
+import { useEntry } from '@/hooks/useApi';
 
 const EMOTION_COLORS: Record<string, string> = {
   긴장: '#FFB84D', 불안: '#FF6B6B', 피로: '#7B8794', 안정: '#5CE0D8',
@@ -27,6 +13,27 @@ const EMOTION_COLORS: Record<string, string> = {
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { data: entry, isLoading } = useEntry(id!);
+
+  if (isLoading) {
+    return (
+      <GradientBackground>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4A9EFF" />
+        </View>
+      </GradientBackground>
+    );
+  }
+
+  if (!entry) {
+    return (
+      <GradientBackground>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.emptyText}>기록을 찾을 수 없습니다.</Text>
+        </View>
+      </GradientBackground>
+    );
+  }
 
   return (
     <GradientBackground>
@@ -35,12 +42,12 @@ export default function EntryDetailScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.date}>{MOCK_DETAIL.date}</Text>
+        <Text style={styles.date}>{entry.date}</Text>
 
         <GlassCard style={styles.card}>
           <Text style={styles.label}>감정</Text>
           <View style={styles.emotionRow}>
-            {MOCK_DETAIL.emotions.map((e) => (
+            {entry.emotions.map((e: string) => (
               <View
                 key={e}
                 style={[
@@ -61,27 +68,27 @@ export default function EntryDetailScreen() {
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>강도</Text>
-              <Text style={styles.metaValue}>{MOCK_DETAIL.intensity}/5</Text>
+              <Text style={styles.metaValue}>{entry.intensity}/5</Text>
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>상황</Text>
-              <Text style={styles.metaValue}>{MOCK_DETAIL.context}</Text>
+              <Text style={styles.metaValue}>{entry.context}</Text>
             </View>
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>안정도</Text>
-              <Text style={styles.metaValue}>{MOCK_DETAIL.stability}</Text>
+              <Text style={styles.metaValue}>{entry.stability}</Text>
             </View>
           </View>
         </GlassCard>
 
-        {MOCK_DETAIL.note && (
+        {entry.note && (
           <GlassCard style={styles.card}>
             <Text style={styles.label}>기록</Text>
-            <Text style={styles.noteText}>{MOCK_DETAIL.note}</Text>
+            <Text style={styles.noteText}>{entry.note}</Text>
           </GlassCard>
         )}
 
-        <MirrorCard data={MOCK_DETAIL.mirror} />
+        {entry.mirror && <MirrorCard data={entry.mirror} />}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -104,4 +111,6 @@ const styles = StyleSheet.create({
   metaLabel: { color: '#8E8EA0', fontSize: 11, marginBottom: 4 },
   metaValue: { color: '#F0F0F5', fontSize: 17, fontWeight: '700' },
   noteText: { color: '#F0F0F5', fontSize: 15, lineHeight: 24 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyText: { color: '#8E8EA0', fontSize: 15 },
 });
