@@ -4,12 +4,21 @@
 -- Emotion Catalog (reference table)
 CREATE TABLE IF NOT EXISTS emotion_catalog (
   id SERIAL PRIMARY KEY,
-  name_ko TEXT NOT NULL UNIQUE,
+  name_ko TEXT NOT NULL,
   name_en TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('positive', 'negative', 'neutral')),
   color_hex TEXT NOT NULL,
   icon_key TEXT
 );
+
+-- Add UNIQUE constraint if it doesn't exist (for existing DBs)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'emotion_catalog_name_ko_key'
+  ) THEN
+    ALTER TABLE emotion_catalog ADD CONSTRAINT emotion_catalog_name_ko_key UNIQUE (name_ko);
+  END IF;
+END $$;
 
 INSERT INTO emotion_catalog (name_ko, name_en, category, color_hex) VALUES
   ('긴장', 'tension', 'negative', '#FFB84D'),
