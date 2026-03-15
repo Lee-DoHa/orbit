@@ -18,8 +18,11 @@ async function createEntry(event) {
   const userId = await ensureUser(sub, email);
   const body = JSON.parse(event.body);
 
-  if (!body.emotionIds?.length || !body.intensity) {
-    return badRequest('emotionIds and intensity are required');
+  if (!Array.isArray(body.emotionIds) || !body.emotionIds.length || !body.intensity) {
+    return badRequest('emotionIds (array) and intensity are required');
+  }
+  if (body.intensity < 1 || body.intensity > 5) {
+    return badRequest('intensity must be between 1 and 5');
   }
 
   const { rows } = await query(
@@ -35,21 +38,24 @@ async function createEntry(event) {
 async function listEntries(event) {
   const sub = getUserSub(event);
   const params = event.queryStringParameters || {};
-  const limit = Math.min(parseInt(params.limit || '20'), 50);
-  const offset = parseInt(params.offset || '0');
+  const rawLimit = parseInt(params.limit || '20') || 20;
+  const limit = rawLimit > 1000 ? 1000 : rawLimit; // cap at 1000 for safety
+  const offset = parseInt(params.offset || '0') || 0;
 
   const { rows } = await query(
-    `SELECT e.*, a.understanding, a.structure, a.suggestion, a.question
+    `SELECT DISTINCT ON (e.id) e.*, a.id as ai_response_id, a.understanding, a.structure, a.suggestion, a.question
      FROM emotion_entries e
      JOIN users u ON u.id = e.user_id
      LEFT JOIN ai_responses a ON a.entry_id = e.id
-     WHERE u.cognito_sub = $1
-     ORDER BY e.recorded_at DESC
-     LIMIT $2 OFFSET $3`,
-    [sub, limit, offset]
+     WHERE u.cognito_sub = $1 AND u.deleted_at IS NULL
+     ORDER BY e.id, a.created_at DESC`,
+    [sub]
   );
+  // Sort by recorded_at DESC and apply pagination
+  rows.sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+  const paginated = rows.slice(offset, offset + limit);
 
-  return ok(rows);
+  return ok(paginated);
 }
 
 async function getEntry(event) {
@@ -57,11 +63,12 @@ async function getEntry(event) {
   const entryId = event.pathParameters.id;
 
   const { rows } = await query(
-    `SELECT e.*, a.understanding, a.structure, a.suggestion, a.question
+    `SELECT e.*, a.id as ai_response_id, a.understanding, a.structure, a.suggestion, a.question
      FROM emotion_entries e
      JOIN users u ON u.id = e.user_id
      LEFT JOIN ai_responses a ON a.entry_id = e.id
-     WHERE u.cognito_sub = $1 AND e.id = $2`,
+     WHERE u.cognito_sub = $1 AND e.id = $2 AND u.deleted_at IS NULL
+     ORDER BY a.created_at DESC LIMIT 1`,
     [sub, entryId]
   );
 
@@ -123,15 +130,17 @@ async function updateEntry(event) {
 
 async function deleteEntry(event) {
   const sub = getUserSub(event);
-  const entryId = event.pathParameters.id;
+  const entryId = event.pathParameters?.id;
+  if (!entryId) return badRequest('Entry ID is required');
 
-  await query(
+  const result = await query(
     `DELETE FROM emotion_entries e
      USING users u
      WHERE u.id = e.user_id AND u.cognito_sub = $1 AND e.id = $2`,
     [sub, entryId]
   );
 
+  if (result.rowCount === 0) return notFound('Entry not found');
   return ok({ deleted: true });
 }
 

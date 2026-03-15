@@ -56,7 +56,7 @@ async function getWeeklyInsights(sub) {
 
   // Previous week stability for comparison
   const { rows: prevStats } = await query(
-    `SELECT COALESCE(STDDEV(intensity), 0) as intensity_stddev
+    `SELECT COALESCE(STDDEV(intensity), 0) as intensity_stddev, COUNT(*)::int as cnt
      FROM emotion_entries
      WHERE user_id = $1
        AND recorded_at > now() - interval '14 days'
@@ -64,12 +64,24 @@ async function getWeeklyInsights(sub) {
     [userId]
   );
 
-  const prevStddev = parseFloat(prevStats[0]?.intensity_stddev) || 0;
-  const prevStabilityIndex = Math.max(0, Math.min(100, Math.round(100 - prevStddev * 20)));
-  const stabilityChange = stabilityIndex - prevStabilityIndex;
+  // Only compute change if previous week had data; otherwise 0
+  let stabilityChange = 0;
+  if (prevStats[0]?.cnt > 0) {
+    const prevStddev = parseFloat(prevStats[0]?.intensity_stddev) || 0;
+    const prevStabilityIndex = Math.max(0, Math.min(100, Math.round(100 - prevStddev * 20)));
+    stabilityChange = stabilityIndex - prevStabilityIndex;
+  }
+
+  // Total entry count for growth stage calculation
+  const { rows: totalRows } = await query(
+    'SELECT COUNT(*)::int as total FROM emotion_entries WHERE user_id = $1',
+    [userId]
+  );
+  const totalEntryCount = totalRows[0]?.total || 0;
 
   return ok({
     entryCount: stats[0].entry_count,
+    totalEntryCount,
     avgIntensity: parseFloat(parseFloat(stats[0].avg_intensity).toFixed(1)),
     stabilityIndex,
     stabilityChange,

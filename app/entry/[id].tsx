@@ -9,7 +9,7 @@ import { EmotionChipGroup } from '@/components/emotion/EmotionChipGroup';
 import { IntensitySlider } from '@/components/emotion/IntensitySlider';
 import { ContextTagSelector } from '@/components/emotion/ContextTagSelector';
 import { useEntry, useDeleteEntry, useUpdateEntry } from '@/hooks/useApi';
-import { EMOTIONS, CONTEXTS } from '@/lib/constants';
+import { EMOTIONS, CONTEXTS, type EmotionId, type ContextId } from '@/lib/constants';
 
 const EMOTION_COLORS: Record<string, string> = {
   긴장: '#FFB84D', 불안: '#FF6B6B', 피로: '#7B8794', 안정: '#5CE0D8',
@@ -25,9 +25,9 @@ export default function EntryDetailScreen() {
   const updateEntry = useUpdateEntry();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editEmotions, setEditEmotions] = useState<number[]>([]);
+  const [editEmotions, setEditEmotions] = useState<EmotionId[]>([]);
   const [editIntensity, setEditIntensity] = useState(3);
-  const [editContext, setEditContext] = useState<string | null>(null);
+  const [editContext, setEditContext] = useState<ContextId | null>(null);
   const [editNote, setEditNote] = useState('');
 
   function startEdit() {
@@ -36,9 +36,9 @@ export default function EntryDetailScreen() {
     const emotionIds = (entry.emotions || []).map((name: string) => {
       const found = EMOTIONS.find(e => e.name === name);
       return found?.id;
-    }).filter(Boolean) as number[];
+    }).filter((id): id is EmotionId => id !== undefined);
     // Map context name back to ID
-    const contextId = CONTEXTS.find(c => c.name === entry.context)?.id || null;
+    const contextId = CONTEXTS.find(c => c.name === entry.context)?.id ?? null;
     setEditEmotions(emotionIds);
     setEditIntensity(entry.intensity);
     setEditContext(contextId);

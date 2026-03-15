@@ -104,6 +104,7 @@ function transformWeekly(raw: any) {
     avgIntensity: raw.avgIntensity ?? 0,
     topContext,
     entryCount: raw.entryCount ?? 0,
+    totalEntryCount: raw.totalEntryCount ?? 0,
   };
 }
 
@@ -171,8 +172,11 @@ export const api = {
   },
   users: {
     me: () => request<any>('/users/me'),
-    update: (body: { display_name?: string; persona?: string; timezone?: string }) =>
+    update: (body: { display_name?: string; persona?: string; timezone?: string; reminder_enabled?: boolean }) =>
       request<any>('/users/me', { method: 'PUT', body: JSON.stringify(body) }),
+    // Demo-only: toggle subscription tier (would be handled by RevenueCat in production)
+    updateSubscription: (tier: 'free' | 'pro') =>
+      request<any>('/users/me', { method: 'PUT', body: JSON.stringify({ _demo_subscription: tier }) }),
     delete: () => request<any>('/users/me', { method: 'DELETE' }),
   },
 };

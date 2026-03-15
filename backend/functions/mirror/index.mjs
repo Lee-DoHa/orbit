@@ -70,13 +70,31 @@ ${recentHistory ? `\n최근 기록:\n${recentHistory}` : ''}`;
     }),
   });
 
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`OpenAI API error ${res.status}: ${errText}`);
+  }
+
   const data = await res.json();
   const latencyMs = Date.now() - start;
+
+  if (!data.choices?.[0]?.message?.content) {
+    throw new Error('OpenAI returned empty response');
+  }
+
   const content = data.choices[0].message.content;
-  const parsed = JSON.parse(content);
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error(`Failed to parse OpenAI response as JSON: ${content.slice(0, 200)}`);
+  }
 
   return {
-    ...parsed,
+    understanding: parsed.understanding || '',
+    structure: parsed.structure || '',
+    suggestion: parsed.suggestion || '',
+    question: parsed.question || null,
     model: 'gpt-4o-mini',
     promptTokens: data.usage?.prompt_tokens,
     completionTokens: data.usage?.completion_tokens,
@@ -89,14 +107,26 @@ async function analyzeEntry(event, sub) {
   if (!body.entryId) return badRequest('entryId is required');
 
   const { rows: entryRows } = await query(
-    `SELECT e.*, u.persona FROM emotion_entries e
+    `SELECT e.*, u.persona, u.subscription_tier FROM emotion_entries e
      JOIN users u ON u.id = e.user_id
-     WHERE u.cognito_sub = $1 AND e.id = $2`,
+     WHERE u.cognito_sub = $1 AND e.id = $2 AND u.deleted_at IS NULL`,
     [sub, body.entryId]
   );
   if (!entryRows.length) return badRequest('Entry not found');
 
   const entry = entryRows[0];
+
+  // Enforce mirror usage limit for free tier
+  if (entry.subscription_tier !== 'pro') {
+    const { rows: usageRows } = await query(
+      `SELECT COUNT(*)::int as cnt FROM ai_responses
+       WHERE user_id = $1 AND created_at >= date_trunc('week', now())`,
+      [entry.user_id]
+    );
+    if (usageRows[0].cnt >= 3) {
+      return badRequest('Weekly mirror limit reached (3/week for free tier)');
+    }
+  }
   const persona = entry.persona || 'calm';
   const emotionNames = entry.emotion_ids.map(id => EMOTION_NAMES[id] || `감정${id}`);
 
@@ -147,7 +177,7 @@ async function getMirrorUsage(sub) {
 
   const { rows } = await query(
     `SELECT COUNT(*)::int as cnt FROM ai_responses
-     WHERE user_id = $1 AND created_at > date_trunc('week', now())`,
+     WHERE user_id = $1 AND created_at >= date_trunc('week', now())`,
     [userRows[0].id]
   );
 

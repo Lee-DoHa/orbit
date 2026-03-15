@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 export function entriesToCSV(entries: any[]): string {
   const header = '날짜,요일,감정,강도,상황,메모\n';
@@ -17,9 +17,9 @@ export function downloadCSV(csv: string, filename: string) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    Alert.alert('내보내기 완료', 'CSV 파일이 다운로드되었습니다.');
   } else {
-    // Native: would use expo-sharing, but for now alert
-    const { Alert } = require('react-native');
-    Alert.alert('내보내기', 'CSV 파일이 준비되었습니다.');
+    // Native: would use expo-sharing in production
+    Alert.alert('내보내기', 'CSV 내보내기는 웹 버전에서 사용할 수 있습니다.');
   }
 }

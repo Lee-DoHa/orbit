@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { CosmicButton } from '@/components/ui/CosmicButton';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
 import { PLANS } from '@/lib/subscription';
-import { useUserProfile, useUpdateUser } from '@/hooks/useApi';
+import { useUserProfile } from '@/hooks/useApi';
+import { api } from '@/lib/api';
 
 type PlanType = 'monthly' | 'annual';
 
@@ -41,13 +43,18 @@ export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('annual');
   const { data: user } = useUserProfile();
-  const updateUser = useUpdateUser();
+  const queryClient = useQueryClient();
 
   const isPro = user?.subscription_tier === 'pro';
 
-  function handleSubscribe() {
-    // Demo: toggle subscription tier
-    updateUser.mutate({ subscription_tier: 'pro' } as any);
+  async function handleSubscribe() {
+    try {
+      await api.users.updateSubscription('pro');
+      queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+      Alert.alert('구독 완료', 'Pro 플랜으로 전환되었습니다!');
+    } catch {
+      Alert.alert('오류', '구독 전환에 실패했습니다.');
+    }
   }
 
   return (

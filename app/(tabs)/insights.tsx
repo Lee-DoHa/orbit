@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, Dimensions, ActivityIndicator } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -38,7 +38,7 @@ export default function InsightsScreen() {
   const { data: patterns, isLoading: patternsLoading, isError: patternsError } = usePatterns();
 
   const isLoading = weeklyLoading || patternsLoading;
-  const isError = weeklyError && patternsError;
+  const isError = weeklyError || patternsError;
 
   if (isLoading) {
     return (
@@ -84,8 +84,8 @@ export default function InsightsScreen() {
           <Text style={styles.stabilityLabel}>안정도 지수</Text>
           <View style={styles.stabilityRow}>
             <Text style={styles.stabilityNumber}>{stabilityIndex}</Text>
-            <View style={styles.stabilityBadge}>
-              <Text style={styles.stabilityChange}>
+            <View style={[styles.stabilityBadge, stabilityChange < 0 && styles.stabilityBadgeNeg]}>
+              <Text style={[styles.stabilityChange, stabilityChange < 0 && styles.stabilityChangeNeg]}>
                 {stabilityChange >= 0 ? `+${stabilityChange}` : String(stabilityChange)}
               </Text>
             </View>
@@ -190,6 +190,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   stabilityChange: { color: '#7FE5A0', fontSize: 15, fontWeight: '600' },
+  stabilityBadgeNeg: {
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+  },
+  stabilityChangeNeg: { color: '#FF6B6B' },
   stabilityDesc: { color: '#8E8EA0', fontSize: 13, marginTop: 8 },
   chartCard: { marginBottom: 16 },
   cardTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600' },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ScrollView, Text, View, StyleSheet, Pressable, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useWeeklyInsights, useUserProfile, useCompleteExperiment, useSaveReflection } from '@/hooks/useApi';
+import { useWeeklyInsights, useUserProfile, useExperiment, useCompleteExperiment, useReflection, useSaveReflection } from '@/hooks/useApi';
 import { canUseFeature } from '@/lib/subscription';
 
 const STAGES = [
@@ -42,30 +42,41 @@ export default function GrowthScreen() {
   const { data: weekly, isLoading } = useWeeklyInsights();
   const { data: user } = useUserProfile();
   const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
+  const { data: experiment } = useExperiment();
   const completeExperiment = useCompleteExperiment();
+  const { data: existingReflection } = useReflection();
   const saveReflection = useSaveReflection();
-  const [experimentDone, setExperimentDone] = useState(false);
   const [reflectionText, setReflectionText] = useState('');
   const [reflectionSaved, setReflectionSaved] = useState(false);
 
-  const entryCount = weekly?.entryCount ?? 0;
+  // Experiment done = already has a response from the API
+  const experimentDone = !!experiment?.status;
+  const experimentStatus = experiment?.status;
+
+  // Load existing reflection text from server
+  useEffect(() => {
+    if (existingReflection?.content && !reflectionText) {
+      setReflectionText(existingReflection.content);
+      setReflectionSaved(true);
+    }
+  }, [existingReflection]);
+
+  const totalEntryCount = weekly?.totalEntryCount ?? 0;
   const stabilityIndex = weekly?.stabilityIndex ?? 0;
-  const currentStage = getStageIndex(entryCount);
+  const currentStage = getStageIndex(totalEntryCount);
 
   function handleExperimentComplete() {
     completeExperiment.mutate('completed', {
       onSuccess: () => {
-        setExperimentDone(true);
         Alert.alert('완료!', '이번 주 실험을 완료했어요');
       },
-      onError: () => setExperimentDone(true),
+      onError: () => Alert.alert('오류', '요청에 실패했습니다. 다시 시도해주세요.'),
     });
   }
 
   function handleExperimentSkip() {
     completeExperiment.mutate('skipped', {
-      onSuccess: () => setExperimentDone(true),
-      onError: () => setExperimentDone(true),
+      onError: () => Alert.alert('오류', '요청에 실패했습니다.'),
     });
   }
 
@@ -129,7 +140,7 @@ export default function GrowthScreen() {
         <GlassCard style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{entryCount}</Text>
+              <Text style={styles.statValue}>{totalEntryCount}</Text>
               <Text style={styles.statLabel}>총 기록</Text>
             </View>
             <View style={styles.statDivider} />
@@ -148,13 +159,13 @@ export default function GrowthScreen() {
         <GlassCard style={styles.experimentCard}>
           <Text style={styles.expTitle}>이번 주 작은 실험</Text>
           <Text style={styles.expText}>
-            이번 주 2회, 10분 산책을 시도해보세요.
+            {experiment?.experiment_text || '이번 주 2회, 10분 산책을 시도해보세요.'}
           </Text>
           {experimentDone ? (
             <View style={styles.expDone}>
               <Ionicons name="checkmark-circle" size={24} color="#7FE5A0" />
               <Text style={styles.expDoneText}>
-                이번 주 실험을 {completeExperiment.variables === 'completed' ? '완료' : '건너뛰기'}했어요
+                이번 주 실험을 {experimentStatus === 'completed' ? '완료' : '건너뛰기'}했어요
               </Text>
             </View>
           ) : (

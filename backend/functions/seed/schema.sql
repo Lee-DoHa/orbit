@@ -4,7 +4,7 @@
 -- Emotion Catalog (reference table)
 CREATE TABLE IF NOT EXISTS emotion_catalog (
   id SERIAL PRIMARY KEY,
-  name_ko TEXT NOT NULL,
+  name_ko TEXT NOT NULL UNIQUE,
   name_en TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('positive', 'negative', 'neutral')),
   color_hex TEXT NOT NULL,
@@ -22,7 +22,7 @@ INSERT INTO emotion_catalog (name_ko, name_en, category, color_hex) VALUES
   ('만족', 'satisfaction', 'positive', '#7FE5A0'),
   ('외로움', 'loneliness', 'negative', '#A78BFA'),
   ('혼란', 'confusion', 'negative', '#F59E0B')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name_ko) DO NOTHING;
 
 -- Users
 CREATE TABLE IF NOT EXISTS users (

@@ -12,8 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useCreateEntry, useMirrorAnalysis, useMirrorUsage, useMirrorFeedback } from '@/hooks/useApi';
-import { useUserStore } from '@/stores/userStore';
+import { useCreateEntry, useMirrorAnalysis, useMirrorUsage, useMirrorFeedback, useUserProfile } from '@/hooks/useApi';
 import { canUseFeature, FREE_MIRROR_LIMIT } from '@/lib/subscription';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
@@ -46,13 +45,15 @@ export default function TodayScreen() {
   const mirror = useMirrorAnalysis();
   const { data: mirrorUsage } = useMirrorUsage();
   const mirrorFeedback = useMirrorFeedback();
-  const subscriptionTier = useUserStore(s => s.subscriptionTier);
+  const { data: userProfile } = useUserProfile();
+  const subscriptionTier = (userProfile?.subscription_tier || 'free') as 'free' | 'pro';
 
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionId[]>([]);
   const [intensity, setIntensity] = useState(DEFAULT_INTENSITY);
   const [context, setContext] = useState<ContextId | null>(null);
   const [note, setNote] = useState('');
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
+  const [mirrorResponseId, setMirrorResponseId] = useState<string | null>(null);
 
   const isLoading = createEntry.isPending || mirror.isPending;
   const canSubmit = selectedEmotions.length > 0 && !isLoading;
@@ -69,11 +70,39 @@ export default function TodayScreen() {
     setContext(null);
     setNote('');
     setMirrorResult(null);
+    setMirrorResponseId(null);
   }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     setMirrorResult(null);
+    setMirrorResponseId(null);
+
+    // Check mirror usage limit BEFORE creating entry
+    if (!canUseFeature(subscriptionTier, 'mirror_unlimited')) {
+      const used = mirrorUsage?.usedThisWeek ?? 0;
+      if (used >= FREE_MIRROR_LIMIT) {
+        Alert.alert(
+          'Mirror AI 제한',
+          `무료 플랜은 주 ${FREE_MIRROR_LIMIT}회까지 Mirror 분석을 이용할 수 있어요.\n기록은 저장되지만 AI 분석은 제공되지 않습니다.`,
+          [
+            { text: '기록만 저장', onPress: async () => {
+              try {
+                await createEntry.mutateAsync({
+                  emotionIds: selectedEmotions, intensity,
+                  contextTag: context ?? undefined, note: note || undefined,
+                });
+                Alert.alert('저장 완료', '감정이 기록되었습니다.');
+                handleReset();
+              } catch { /* ignore */ }
+            }},
+            { text: 'Pro 알아보기', onPress: () => router.push('/subscription' as any) },
+          ]
+        );
+        return;
+      }
+    }
+
     try {
       const entry = await createEntry.mutateAsync({
         emotionIds: selectedEmotions,
@@ -82,25 +111,9 @@ export default function TodayScreen() {
         note: note || undefined,
       });
 
-      // Check mirror usage limit
-      if (!canUseFeature(subscriptionTier, 'mirror_unlimited')) {
-        const used = mirrorUsage?.usedThisWeek ?? 0;
-        if (used >= FREE_MIRROR_LIMIT) {
-          Alert.alert(
-            'Mirror AI 제한',
-            `무료 플랜은 주 ${FREE_MIRROR_LIMIT}회까지 Mirror 분석을 이용할 수 있어요.`,
-            [
-              { text: '확인' },
-              { text: 'Pro 알아보기', onPress: () => router.push('/subscription' as any) },
-            ]
-          );
-          handleReset();
-          return;
-        }
-      }
-
       const result = await mirror.mutateAsync(entry.id);
       setMirrorResult(result);
+      if (result.id) setMirrorResponseId(result.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -188,8 +201,11 @@ export default function TodayScreen() {
               ) : null}
               <MirrorCard
                 data={mirrorResult}
+                aiResponseId={mirrorResponseId ?? undefined}
                 onFeedback={(helpful) => {
-                  mirrorFeedback.mutate({ aiResponseId: 'latest', helpful });
+                  if (mirrorResponseId) {
+                    mirrorFeedback.mutate({ aiResponseId: mirrorResponseId, helpful });
+                  }
                 }}
               />
               <View style={styles.resultActions}>

@@ -26,7 +26,15 @@ export default function RootLayout() {
         if (hasSession) {
           // Restore session - parse token to get user info
           const token = await getAccessToken();
-          const payload = JSON.parse(atob(token.split('.')[1]));
+          // Decode JWT payload (base64url → JSON)
+          const base64 = token.split('.')[1];
+          const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
+          const decoded = decodeURIComponent(
+            atob(base64Fixed).split('').map(c =>
+              '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join('')
+          );
+          const payload = JSON.parse(decoded);
           setUser({
             id: payload.sub,
             email: payload.email,

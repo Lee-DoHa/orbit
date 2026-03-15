@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -77,7 +77,7 @@ export default function SettingsScreen() {
   }
 
   async function handleDataExport() {
-    const tier = (user?.subscription_tier || 'free') as any;
+    const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
     if (!canUseFeature(tier, 'data_export')) {
       Alert.alert('Pro 기능', 'CSV 내보내기는 Pro 플랜에서 사용할 수 있어요.', [
         { text: '닫기', style: 'cancel' },
@@ -90,7 +90,6 @@ export default function SettingsScreen() {
       const csv = entriesToCSV(entries);
       const filename = `orbit-감정기록-${new Date().toISOString().slice(0, 10)}.csv`;
       downloadCSV(csv, filename);
-      Alert.alert('내보내기 완료', 'CSV 파일이 다운로드되었습니다.');
     } catch {
       Alert.alert('오류', '데이터를 불러올 수 없습니다.');
     }
@@ -187,7 +186,7 @@ export default function SettingsScreen() {
                 value={reminder}
                 onValueChange={(val) => {
                   setReminder(val);
-                  updateUser.mutate({ reminder_enabled: val } as any);
+                  updateUser.mutate({ reminder_enabled: val });
                 }}
                 trackColor={{ false: '#333', true: '#4A9EFF' }}
                 thumbColor="#fff"
