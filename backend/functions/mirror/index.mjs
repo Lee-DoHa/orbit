@@ -23,11 +23,37 @@ const PERSONA_PROMPTS = {
 
 function generateMockResponse(emotionNames, intensity, context, persona = 'calm') {
   const emotions = emotionNames.join(', ');
-  const tone = persona === 'cheer' ? '힘내세요! ' : persona === 'rational' ? '' : '';
+  const contextStr = context ? CONTEXT_NAMES[context] : null;
+
+  if (persona === 'cheer') {
+    return {
+      understanding: `${emotions}을(를) 느끼셨군요! 감정을 솔직하게 마주하는 것만으로도 정말 대단한 일이에요. 강도 ${intensity}의 감정도 당신의 소중한 일부입니다.`,
+      structure: contextStr
+        ? `${contextStr} 상황에서 이런 감정을 느끼는 건 자연스러운 거예요. 오히려 자신의 감정을 알아차린 것 자체가 성장의 증거랍니다!`
+        : `이 감정이 찾아온 건 당신이 무언가에 진심이라는 뜻이에요. 스스로를 다독여주세요!`,
+      suggestion: `좋아하는 노래를 한 곡 들으며 잠시 쉬어보는 건 어떨까요? 작은 기쁨이 마음의 에너지를 채워줄 거예요.`,
+      question: intensity >= 4 ? '오늘 자신에게 해주고 싶은 따뜻한 말이 있다면 뭘까요?' : null,
+    };
+  }
+
+  if (persona === 'rational') {
+    return {
+      understanding: `현재 ${emotions} 감정이 관찰됩니다. 강도 ${intensity}${intensity >= 4 ? '로 비교적 높은 수준' : '로 보통 수준'}입니다.`,
+      structure: contextStr
+        ? `${contextStr} 상황과 연관된 감정 패턴입니다. 동일 상황에서의 반복 여부를 확인하면 근본 원인을 파악할 수 있습니다.`
+        : `이 감정의 트리거를 구체적으로 파악하면 효과적인 대응 전략을 세울 수 있습니다.`,
+      suggestion: `3분간 현재 상황을 객관적으로 적어보세요. 사실과 감정을 분리하면 명확한 판단에 도움이 됩니다.`,
+      question: intensity >= 4 ? '이 감정의 구체적인 원인을 세 가지로 나눈다면 무엇인가요?' : null,
+    };
+  }
+
+  // calm (default)
   return {
-    understanding: `${tone}${emotions}을(를) 느끼고 계시는군요. 강도 ${intensity}의 감정은 지금 당신에게 중요한 신호입니다.`,
-    structure: `${context ? CONTEXT_NAMES[context] + ' 상황에서 ' : ''}이 감정이 반복되는 패턴이 있는지 살펴볼 필요가 있어요.`,
-    suggestion: `잠시 5분간 깊은 호흡을 해보세요. 들숨 4초, 날숨 6초의 리듬으로 3회 반복하면 감정의 강도를 조절하는 데 도움이 됩니다.`,
+    understanding: `${emotions}을(를) 느끼고 계시는군요. 강도 ${intensity}의 감정은 지금 당신에게 중요한 신호입니다. 괜찮아요, 천천히 살펴봐요.`,
+    structure: contextStr
+      ? `${contextStr} 상황에서 이 감정이 반복되는 패턴이 있는지 조용히 살펴볼 필요가 있어요.`
+      : `이 감정이 반복되는 패턴이 있는지 부드럽게 살펴볼 필요가 있어요.`,
+    suggestion: `잠시 5분간 깊은 호흡을 해보세요. 들숨 4초, 날숨 6초의 리듬으로 3회 반복하면 마음이 편안해질 거예요.`,
     question: intensity >= 4 ? '오늘 이 감정을 가장 강하게 느낀 순간은 언제였나요?' : null,
   };
 }

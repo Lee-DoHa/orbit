@@ -142,7 +142,7 @@ export const api = {
   },
   mirror: {
     analyze: (entryId: string) =>
-      request<{ understanding: string; structure: string; suggestion: string; question: string | null }>(
+      request<{ id: string; understanding: string; structure: string; suggestion: string; question: string | null }>(
         '/mirror', { method: 'POST', body: JSON.stringify({ entryId }) }
       ),
     usage: () => request<{ usedThisWeek: number; limit: number }>('/mirror/usage'),

@@ -57,6 +57,29 @@ export default function SubscriptionScreen() {
     }
   }
 
+  function handleDowngrade() {
+    Alert.alert(
+      'Free 플랜으로 전환',
+      'Pro 기능(무제한 Mirror AI, 전체 기록, 고급 필터 등)을 더 이상 사용할 수 없게 됩니다.\n\n정말 Free 플랜으로 전환하시겠어요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '전환하기',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.users.updateSubscription('free');
+              queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+              Alert.alert('전환 완료', 'Free 플랜으로 전환되었습니다.');
+            } catch {
+              Alert.alert('오류', '플랜 전환에 실패했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <GradientBackground>
       <ScrollView
@@ -77,6 +100,9 @@ export default function SubscriptionScreen() {
               <Ionicons name="checkmark-circle" size={32} color={colors.accent.cyan} />
               <Text style={styles.proActiveText}>현재 Pro 플랜 사용 중</Text>
             </View>
+            <Pressable style={styles.downgradeButton} onPress={handleDowngrade}>
+              <Text style={styles.downgradeText}>Free 플랜으로 전환</Text>
+            </Pressable>
           </GlassCard>
         ) : (
           <>
@@ -181,6 +207,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
     color: colors.accent.cyan,
+  },
+  downgradeButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignSelf: 'center',
+  },
+  downgradeText: {
+    fontSize: fontSize.sm,
+    color: colors.text.tertiary,
   },
   planRow: {
     flexDirection: 'row',

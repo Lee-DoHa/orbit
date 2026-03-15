@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import { useUserStore } from '@/stores/userStore';
 import { api } from '@/lib/api';
 import { entriesToCSV, downloadCSV } from '@/lib/export';
 import { canUseFeature } from '@/lib/subscription';
+import { colors, borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 const PERSONA_OPTIONS = [
   { key: 'calm', label: '차분함' },
@@ -43,6 +44,8 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [reminder, setReminder] = useState(true);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameInput, setNameInput] = useState('');
 
   const { data: user, isLoading, isError } = useUserProfile();
   const updateUser = useUpdateUser();
@@ -59,20 +62,44 @@ export default function SettingsScreen() {
   function cyclePersona() {
     const idx = PERSONA_OPTIONS.findIndex(p => p.key === currentPersona);
     const next = PERSONA_OPTIONS[(idx + 1) % PERSONA_OPTIONS.length];
-    updateUser.mutate({ persona: next.key });
+    updateUser.mutate({ persona: next.key }, {
+      onSuccess: () => Alert.alert('페르소나 변경', `AI 페르소나가 '${next.label}'(으)로 변경되었습니다.\n다음 Mirror 분석부터 적용됩니다.`),
+      onError: () => Alert.alert('오류', '페르소나 변경에 실패했습니다.'),
+    });
   }
 
   function handleEditProfile() {
     if (Platform.OS === 'web') {
       const name = prompt('프로필 이름을 입력하세요', displayName === '-' ? '' : displayName);
       if (name !== null && name.trim()) {
-        updateUser.mutate({ display_name: name.trim() });
+        updateUser.mutate({ display_name: name.trim() }, {
+          onSuccess: () => Alert.alert('프로필 수정', '이름이 변경되었습니다.'),
+          onError: () => Alert.alert('오류', '이름 변경에 실패했습니다.'),
+        });
       }
-    } else {
+    } else if (Platform.OS === 'ios') {
       Alert.prompt?.('프로필 편집', '이름을 입력하세요', (name) => {
-        if (name?.trim()) updateUser.mutate({ display_name: name.trim() });
-      }, 'plain-text', displayName === '-' ? '' : displayName) ??
-        Alert.alert('프로필 편집', '이 기능은 앱에서 사용 가능합니다.');
+        if (name?.trim()) updateUser.mutate({ display_name: name.trim() }, {
+          onSuccess: () => Alert.alert('프로필 수정', '이름이 변경되었습니다.'),
+          onError: () => Alert.alert('오류', '이름 변경에 실패했습니다.'),
+        });
+      }, 'plain-text', displayName === '-' ? '' : displayName);
+    } else {
+      // Android: use Modal with TextInput
+      setNameInput(displayName === '-' ? '' : displayName);
+      setShowNameModal(true);
+    }
+  }
+
+  function handleSaveName() {
+    if (nameInput.trim()) {
+      updateUser.mutate({ display_name: nameInput.trim() }, {
+        onSuccess: () => {
+          setShowNameModal(false);
+          Alert.alert('프로필 수정', '이름이 변경되었습니다.');
+        },
+        onError: () => Alert.alert('오류', '이름 변경에 실패했습니다.'),
+      });
     }
   }
 
@@ -186,7 +213,10 @@ export default function SettingsScreen() {
                 value={reminder}
                 onValueChange={(val) => {
                   setReminder(val);
-                  updateUser.mutate({ reminder_enabled: val });
+                  updateUser.mutate({ reminder_enabled: val }, {
+                    onSuccess: () => Alert.alert('설정 저장', val ? '리마인더가 켜졌습니다.' : '리마인더가 꺼졌습니다.'),
+                    onError: () => { setReminder(!val); Alert.alert('오류', '설정 변경에 실패했습니다.'); },
+                  });
                 }}
                 trackColor={{ false: '#333', true: '#4A9EFF' }}
                 thumbColor="#fff"
@@ -208,7 +238,10 @@ export default function SettingsScreen() {
               Alert.alert('타임존 설정', '사용할 타임존을 선택하세요',
                 timezones.map(tz => ({
                   text: tz,
-                  onPress: () => updateUser.mutate({ timezone: tz }),
+                  onPress: () => updateUser.mutate({ timezone: tz }, {
+                    onSuccess: () => Alert.alert('설정 저장', `타임존이 ${tz}(으)로 변경되었습니다.`),
+                    onError: () => Alert.alert('오류', '타임존 변경에 실패했습니다.'),
+                  }),
                 })).concat([{ text: '취소', style: 'cancel' as any, onPress: undefined as any }])
               );
             }}
@@ -234,6 +267,38 @@ export default function SettingsScreen() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Android/Web Name Edit Modal */}
+      <Modal
+        visible={showNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>프로필 편집</Text>
+            <Text style={styles.modalSubtitle}>이름을 입력하세요</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="이름"
+              placeholderTextColor="#8E8EA0"
+              autoFocus
+              maxLength={30}
+            />
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalCancelButton} onPress={() => setShowNameModal(false)}>
+                <Text style={styles.modalCancelText}>취소</Text>
+              </Pressable>
+              <Pressable style={styles.modalSaveButton} onPress={handleSaveName}>
+                <Text style={styles.modalSaveText}>저장</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GradientBackground>
   );
 }
@@ -274,6 +339,71 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#FF6B6B',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#1A1A2E',
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  modalTitle: {
+    color: '#F0F0F5',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    color: '#8E8EA0',
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 12,
+    color: '#F0F0F5',
+    fontSize: 15,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#8E8EA0',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalSaveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#4A9EFF',
+    alignItems: 'center',
+  },
+  modalSaveText: {
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },

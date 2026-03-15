@@ -33,6 +33,7 @@ import {
 } from '@/lib/constants';
 
 type MirrorResult = {
+  id: string;
   understanding: string;
   structure: string;
   suggestion: string;

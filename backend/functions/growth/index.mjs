@@ -21,6 +21,23 @@ function getMonthStart() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 }
 
+const EXPERIMENT_POOL = [
+  '이번 주 2회, 10분 산책을 시도해보세요.',
+  '하루 한 번, 감사한 것 3가지를 적어보세요.',
+  '이번 주 한 번, 평소 안 가던 카페에서 시간을 보내보세요.',
+  '잠들기 전 5분 호흡 명상을 3일간 시도해보세요.',
+  '이번 주 한 사람에게 진심 어린 칭찬을 해보세요.',
+  '하루 중 가장 강한 감정을 느낀 순간을 메모해보세요.',
+  '이번 주 2회, 좋아하는 음악을 들으며 15분 산책해보세요.',
+  '매일 아침 오늘의 목표를 한 문장으로 적어보세요.',
+];
+
+function getExperimentText(weekStart) {
+  // Deterministic selection based on week start date
+  const dateNum = parseInt(weekStart.replace(/-/g, ''), 10);
+  return EXPERIMENT_POOL[dateNum % EXPERIMENT_POOL.length];
+}
+
 async function handleExperiment(event, sub) {
   const userId = await getUserId(sub);
   if (!userId) return badRequest('User not found');
@@ -31,7 +48,9 @@ async function handleExperiment(event, sub) {
       'SELECT * FROM experiment_responses WHERE user_id = $1 AND week_start = $2',
       [userId, weekStart]
     );
-    return ok(rows[0] || null);
+    // Always return experiment_text even if no response yet
+    if (rows[0]) return ok(rows[0]);
+    return ok({ experiment_text: getExperimentText(weekStart), status: null, week_start: weekStart });
   }
 
   if (event.httpMethod === 'POST') {
@@ -40,7 +59,7 @@ async function handleExperiment(event, sub) {
       return badRequest('status must be "completed" or "skipped"');
     }
 
-    const experimentText = '이번 주 2회, 10분 산책을 시도해보세요.';
+    const experimentText = getExperimentText(weekStart);
 
     const { rows } = await query(
       `INSERT INTO experiment_responses (user_id, week_start, experiment_text, status)
