@@ -1,4 +1,4 @@
-import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,8 +7,13 @@ import { GradientBackground } from '@/components/ui/GradientBackground';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useUserProfile, useUpdateUser } from '@/hooks/useApi';
 import { signOut } from '@/lib/auth';
+import { useUserStore } from '@/stores/userStore';
 
-const PERSONA_OPTIONS = ['차분함', '따뜻함', '직접적', '유머러스'];
+const PERSONA_OPTIONS = [
+  { key: 'calm', label: '차분함' },
+  { key: 'cheer', label: '따뜻함' },
+  { key: 'rational', label: '직접적' },
+] as const;
 
 type SettingRowProps = {
   icon: string;
@@ -36,17 +41,53 @@ export default function SettingsScreen() {
   const router = useRouter();
   const [reminder, setReminder] = useState(true);
 
-  const { data: user, isLoading } = useUserProfile();
+  const { data: user, isLoading, isError } = useUserProfile();
   const updateUser = useUpdateUser();
 
   const displayName = user?.display_name ?? '-';
-  const plan = user?.plan ?? 'Free';
-  const currentPersona = user?.persona ?? '차분함';
+  const plan = user?.subscription_tier === 'pro' ? 'Pro' : 'Free';
+  const currentPersona = user?.persona ?? 'calm';
+  const personaLabel = PERSONA_OPTIONS.find(p => p.key === currentPersona)?.label ?? '차분함';
 
   function cyclePersona() {
-    const idx = PERSONA_OPTIONS.indexOf(currentPersona);
+    const idx = PERSONA_OPTIONS.findIndex(p => p.key === currentPersona);
     const next = PERSONA_OPTIONS[(idx + 1) % PERSONA_OPTIONS.length];
-    updateUser.mutate({ persona: next });
+    updateUser.mutate({ persona: next.key });
+  }
+
+  function handleEditProfile() {
+    if (Platform.OS === 'web') {
+      const name = prompt('프로필 이름을 입력하세요', displayName === '-' ? '' : displayName);
+      if (name !== null && name.trim()) {
+        updateUser.mutate({ display_name: name.trim() });
+      }
+    } else {
+      Alert.prompt?.('프로필 편집', '이름을 입력하세요', (name) => {
+        if (name?.trim()) updateUser.mutate({ display_name: name.trim() });
+      }, 'plain-text', displayName === '-' ? '' : displayName) ??
+        Alert.alert('프로필 편집', '이 기능은 앱에서 사용 가능합니다.');
+    }
+  }
+
+  function handleDataExport() {
+    Alert.alert('데이터 다운로드', '이 기능은 추후 업데이트에서 지원될 예정이에요.');
+  }
+
+  function handleDataDelete() {
+    Alert.alert(
+      '데이터 삭제',
+      '모든 감정 기록과 인사이트가 삭제됩니다. 이 작업은 되돌릴 수 없어요.',
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '삭제', style: 'destructive', onPress: () => {
+          Alert.alert('안내', '데이터 삭제 기능은 추후 업데이트에서 지원될 예정이에요.');
+        }},
+      ]
+    );
+  }
+
+  function handlePrivacy() {
+    Alert.alert('개인정보 처리방침', 'ORBIT은 사용자의 감정 데이터를 안전하게 보호합니다. 자세한 내용은 추후 공개될 예정이에요.');
   }
 
   async function handleLogout() {
@@ -57,6 +98,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await signOut();
+          useUserStore.getState().logout();
           router.replace('/auth');
         },
       },
@@ -73,6 +115,10 @@ export default function SettingsScreen() {
     );
   }
 
+  if (isError) {
+    // Still show settings UI even if profile fetch fails
+  }
+
   return (
     <GradientBackground>
       <ScrollView
@@ -84,8 +130,8 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>계정</Text>
-          <SettingRow icon="person-outline" title="프로필" subtitle={displayName} />
-          <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} />
+          <SettingRow icon="person-outline" title="프로필" subtitle={displayName} onPress={handleEditProfile} />
+          <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} onPress={() => Alert.alert('구독 관리', '현재 Free 플랜을 사용 중이에요. Pro 플랜은 추후 제공될 예정입니다.')} />
         </View>
 
         <View style={styles.section}>
@@ -105,16 +151,16 @@ export default function SettingsScreen() {
           <SettingRow
             icon="happy-outline"
             title="AI 페르소나"
-            subtitle={currentPersona}
+            subtitle={personaLabel}
             onPress={cyclePersona}
           />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>데이터</Text>
-          <SettingRow icon="download-outline" title="데이터 다운로드" />
-          <SettingRow icon="trash-outline" title="데이터 삭제" />
-          <SettingRow icon="shield-checkmark-outline" title="개인정보 처리방침" />
+          <SettingRow icon="download-outline" title="데이터 다운로드" onPress={handleDataExport} />
+          <SettingRow icon="trash-outline" title="데이터 삭제" onPress={handleDataDelete} />
+          <SettingRow icon="shield-checkmark-outline" title="개인정보 처리방침" onPress={handlePrivacy} />
         </View>
 
         <View style={styles.section}>

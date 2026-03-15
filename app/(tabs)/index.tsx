@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCreateEntry, useMirrorAnalysis } from '@/hooks/useApi';
 import { GradientBackground } from '@/components/ui/GradientBackground';
@@ -170,7 +171,7 @@ export default function TodayScreen() {
                 />
                 <CosmicButton
                   title="인사이트 보기"
-                  onPress={() => {}}
+                  onPress={() => router.push('/(tabs)/insights')}
                   variant="ghost"
                 />
               </View>

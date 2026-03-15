@@ -110,7 +110,7 @@ export default function ArchiveScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [filter, setFilter] = useState('전체');
-  const { data: entries = [], isLoading } = useEntries();
+  const { data: entries = [], isLoading, isError } = useEntries();
 
   const filtered =
     filter === '전체'
@@ -146,6 +146,18 @@ export default function ArchiveScreen() {
         {isLoading ? (
           <View style={styles.loading}>
             <ActivityIndicator size="large" color="#4A9EFF" />
+          </View>
+        ) : isError ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyTitle}>기록을 불러올 수 없어요</Text>
+            <Text style={styles.emptySubtitle}>네트워크 연결을 확인해주세요</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>🌙</Text>
+            <Text style={styles.emptyTitle}>아직 기록이 없어요</Text>
+            <Text style={styles.emptySubtitle}>오늘 탭에서 첫 감정을 기록해보세요</Text>
           </View>
         ) : (
           <FlatList
@@ -224,4 +236,8 @@ const styles = StyleSheet.create({
   list: { paddingBottom: 100 },
   separator: { height: 8 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { color: '#F0F0F5', fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  emptySubtitle: { color: '#8E8EA0', fontSize: 14, textAlign: 'center' },
 });

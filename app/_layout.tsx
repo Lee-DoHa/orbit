@@ -5,7 +5,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkSession, getAccessToken } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);

@@ -13,7 +13,7 @@ const EMOTION_COLORS: Record<string, string> = {
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: entry, isLoading } = useEntry(id!);
+  const { data: entry, isLoading, isError } = useEntry(id!);
 
   if (isLoading) {
     return (
@@ -25,7 +25,7 @@ export default function EntryDetailScreen() {
     );
   }
 
-  if (!entry) {
+  if (!entry || isError) {
     return (
       <GradientBackground>
         <View style={styles.loadingContainer}>
@@ -42,12 +42,12 @@ export default function EntryDetailScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.date}>{entry.date}</Text>
+        <Text style={styles.date}>{entry.date} ({entry.dayOfWeek})</Text>
 
         <GlassCard style={styles.card}>
           <Text style={styles.label}>감정</Text>
           <View style={styles.emotionRow}>
-            {entry.emotions.map((e: string) => (
+            {(entry.emotions || []).map((e: string) => (
               <View
                 key={e}
                 style={[
@@ -73,10 +73,6 @@ export default function EntryDetailScreen() {
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>상황</Text>
               <Text style={styles.metaValue}>{entry.context}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Text style={styles.metaLabel}>안정도</Text>
-              <Text style={styles.metaValue}>{entry.stability}</Text>
             </View>
           </View>
         </GlassCard>

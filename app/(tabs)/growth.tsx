@@ -1,19 +1,44 @@
-import { ScrollView, Text, View, StyleSheet } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { useWeeklyInsights } from '@/hooks/useApi';
 
 const STAGES = [
-  { name: 'Seed', label: '씨앗', active: true, done: true },
-  { name: 'Sprout', label: '새싹', active: true, done: true },
-  { name: 'Branching', label: '가지', active: true, done: false },
-  { name: 'Bloom', label: '개화', active: false, done: false },
-  { name: 'Stable', label: '안정', active: false, done: false },
+  { name: 'Seed', label: '씨앗', threshold: 0 },
+  { name: 'Sprout', label: '새싹', threshold: 3 },
+  { name: 'Branching', label: '가지', threshold: 7 },
+  { name: 'Bloom', label: '개화', threshold: 14 },
+  { name: 'Stable', label: '안정', threshold: 30 },
 ];
+
+function getStageIndex(entryCount: number) {
+  let idx = 0;
+  for (let i = STAGES.length - 1; i >= 0; i--) {
+    if (entryCount >= STAGES[i].threshold) {
+      idx = i;
+      break;
+    }
+  }
+  return idx;
+}
+
+function getStageDescription(stageIdx: number, stabilityIndex: number) {
+  if (stageIdx === 0) return '첫 감정 기록을 시작해보세요. 씨앗이 움트기 시작합니다.';
+  if (stageIdx === 1) return '감정 기록이 쌓이고 있어요. 작은 새싹이 자라나고 있습니다.';
+  if (stageIdx === 2) return `안정 지수 ${stabilityIndex}점! 가지가 뻗어나가고 있어요.`;
+  if (stageIdx === 3) return '꾸준한 기록으로 감정 인식이 깊어지고 있어요. 곧 꽃이 필 거예요.';
+  return '감정과의 안정적인 관계를 만들어가고 있습니다.';
+}
 
 export default function GrowthScreen() {
   const insets = useSafeAreaInsets();
+  const { data: weekly, isLoading } = useWeeklyInsights();
+
+  const entryCount = weekly?.entryCount ?? 0;
+  const stabilityIndex = weekly?.stabilityIndex ?? 0;
+  const currentStage = getStageIndex(entryCount);
 
   return (
     <GradientBackground>
@@ -32,22 +57,45 @@ export default function GrowthScreen() {
                 <View
                   style={[
                     styles.stageDot,
-                    s.done && styles.stageDotDone,
-                    s.active && !s.done && styles.stageDotActive,
+                    i < currentStage && styles.stageDotDone,
+                    i === currentStage && styles.stageDotActive,
                   ]}
                 />
                 {i < STAGES.length - 1 && (
-                  <View style={[styles.stageLine, s.done && styles.stageLineDone]} />
+                  <View style={[styles.stageLine, i < currentStage && styles.stageLineDone]} />
                 )}
-                <Text style={[styles.stageLabel, s.active && styles.stageLabelActive]}>
+                <Text style={[styles.stageLabel, i <= currentStage && styles.stageLabelActive]}>
                   {s.label}
                 </Text>
               </View>
             ))}
           </View>
-          <Text style={styles.stageDesc}>
-            최근 14일간 안정 지수가 상승하여 새로운 가지가 자랐습니다.
-          </Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#4A9EFF" style={{ marginTop: 16 }} />
+          ) : (
+            <Text style={styles.stageDesc}>
+              {getStageDescription(currentStage, stabilityIndex)}
+            </Text>
+          )}
+        </GlassCard>
+
+        <GlassCard style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{entryCount}</Text>
+              <Text style={styles.statLabel}>총 기록</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{stabilityIndex}</Text>
+              <Text style={styles.statLabel}>안정 지수</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{STAGES[currentStage].label}</Text>
+              <Text style={styles.statLabel}>현재 단계</Text>
+            </View>
+          </View>
         </GlassCard>
 
         <GlassCard style={styles.experimentCard}>
@@ -56,12 +104,12 @@ export default function GrowthScreen() {
             이번 주 2회, 10분 산책을 시도해보세요.
           </Text>
           <View style={styles.expButtons}>
-            <View style={styles.expBtn}>
+            <Pressable style={styles.expBtn}>
               <Text style={styles.expBtnText}>완료</Text>
-            </View>
-            <View style={[styles.expBtn, styles.expBtnGhost]}>
+            </Pressable>
+            <Pressable style={[styles.expBtn, styles.expBtnGhost]}>
               <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
-            </View>
+            </Pressable>
           </View>
         </GlassCard>
 
@@ -101,6 +149,12 @@ const styles = StyleSheet.create({
   stageLabel: { color: '#5A5A6E', fontSize: 11, marginTop: 8 },
   stageLabelActive: { color: '#F0F0F5' },
   stageDesc: { color: '#8E8EA0', fontSize: 13, marginTop: 20, lineHeight: 20 },
+  statsCard: { marginBottom: 16 },
+  statsRow: { flexDirection: 'row' },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { color: '#F0F0F5', fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  statLabel: { color: '#8E8EA0', fontSize: 11 },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 8 },
   experimentCard: { marginBottom: 16 },
   expTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600', marginBottom: 12 },
   expText: { color: '#8E8EA0', fontSize: 14, lineHeight: 22, marginBottom: 16 },

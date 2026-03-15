@@ -34,16 +34,29 @@ function MiniChart({ data }: { data: { day: string; value: number }[] }) {
 
 export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
-  const { data: weekly, isLoading: weeklyLoading } = useWeeklyInsights();
-  const { data: patterns, isLoading: patternsLoading } = usePatterns();
+  const { data: weekly, isLoading: weeklyLoading, isError: weeklyError } = useWeeklyInsights();
+  const { data: patterns, isLoading: patternsLoading, isError: patternsError } = usePatterns();
 
   const isLoading = weeklyLoading || patternsLoading;
+  const isError = weeklyError && patternsError;
 
   if (isLoading) {
     return (
       <GradientBackground>
         <View style={[styles.loadingContainer, { paddingTop: insets.top + 16 }]}>
           <ActivityIndicator size="large" color="#4A9EFF" />
+        </View>
+      </GradientBackground>
+    );
+  }
+
+  if (isError) {
+    return (
+      <GradientBackground>
+        <View style={[styles.loadingContainer, { paddingTop: insets.top + 16 }]}>
+          <Text style={styles.emptyIcon}>📊</Text>
+          <Text style={styles.emptyTitle}>인사이트를 불러올 수 없어요</Text>
+          <Text style={styles.emptySubtitle}>네트워크 연결을 확인해주세요</Text>
         </View>
       </GradientBackground>
     );
@@ -162,7 +175,10 @@ const chartStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 100 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { color: '#F0F0F5', fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  emptySubtitle: { color: '#8E8EA0', fontSize: 14, textAlign: 'center' },
   stabilityCard: { marginBottom: 16 },
   stabilityLabel: { color: '#8E8EA0', fontSize: 13, marginBottom: 8 },
   stabilityRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
