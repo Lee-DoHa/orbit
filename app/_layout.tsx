@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkSession, getAccessToken } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
+import { initRevenueCat } from '@/lib/revenueCat';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,8 @@ export default function RootLayout() {
             email: payload.email,
             displayName: payload.email?.split('@')[0] || '',
           });
+          // Initialize RevenueCat after auth
+          initRevenueCat(payload.sub).catch(() => {});
         }
       } catch {
         // No valid session

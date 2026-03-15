@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useWeeklyInsights, useUserProfile, useExperiment, useCompleteExperiment, useReflection, useSaveReflection } from '@/hooks/useApi';
+import { ProFeatureCard } from '@/components/ui/ProFeatureCard';
+import { useWeeklyInsights, useUserProfile, useExperiment, useCompleteExperiment, useReflection, useSaveReflection, useSmartExperiment, useMonthlyNarrative } from '@/hooks/useApi';
 import { canUseFeature } from '@/lib/subscription';
 
 const STAGES = [
@@ -42,12 +43,17 @@ export default function GrowthScreen() {
   const { data: weekly, isLoading } = useWeeklyInsights();
   const { data: user } = useUserProfile();
   const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
+  const isPro = tier === 'pro';
   const { data: experiment } = useExperiment();
   const completeExperiment = useCompleteExperiment();
   const { data: existingReflection } = useReflection();
   const saveReflection = useSaveReflection();
   const [reflectionText, setReflectionText] = useState('');
   const [reflectionSaved, setReflectionSaved] = useState(false);
+
+  // AI features (Pro only)
+  const { data: smartExp } = useSmartExperiment(isPro);
+  const { data: monthlyNarrative } = useMonthlyNarrative(isPro);
 
   // Experiment done = already has a response from the API
   const experimentDone = !!experiment?.status;
@@ -156,6 +162,7 @@ export default function GrowthScreen() {
           </View>
         </GlassCard>
 
+        {/* Regular experiment card */}
         <GlassCard style={styles.experimentCard}>
           <Text style={styles.expTitle}>이번 주 작은 실험</Text>
           <Text style={styles.expText}>
@@ -180,6 +187,32 @@ export default function GrowthScreen() {
           )}
         </GlassCard>
 
+        {/* AI Smart Experiment (Pro) */}
+        {isPro ? (
+          smartExp ? (
+            <GlassCard style={styles.aiExpCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 맞춤 실험</Text>
+              </View>
+              <Text style={styles.aiExpText}>{smartExp.experiment}</Text>
+              {smartExp.reasoning && (
+                <View style={styles.aiReasoningBox}>
+                  <Text style={styles.aiReasoningText}>{smartExp.reasoning}</Text>
+                </View>
+              )}
+            </GlassCard>
+          ) : null
+        ) : (
+          <ProFeatureCard
+            icon="sparkles"
+            title="AI 맞춤 실험"
+            description="감정 패턴을 분석해 나에게 딱 맞는 실험을 추천해요"
+            style={styles.proCard}
+          />
+        )}
+
+        {/* Monthly reflection */}
         <GlassCard>
           <Text style={styles.reflectTitle}>월간 회고</Text>
           <Text style={styles.reflectQ}>
@@ -210,6 +243,48 @@ export default function GrowthScreen() {
             </View>
           )}
         </GlassCard>
+
+        {/* AI Monthly Narrative (Pro) */}
+        {isPro ? (
+          monthlyNarrative ? (
+            <GlassCard style={styles.aiNarrativeCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="book" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 월간 내러티브</Text>
+              </View>
+              <Text style={styles.aiNarrativeText}>{monthlyNarrative.narrative}</Text>
+              {monthlyNarrative.growthArc && (
+                <View style={styles.growthArcBox}>
+                  <Text style={styles.growthArcLabel}>성장 아크</Text>
+                  <Text style={styles.growthArcText}>{monthlyNarrative.growthArc}</Text>
+                </View>
+              )}
+              {monthlyNarrative.emotionalHighlights?.length > 0 && (
+                <View style={styles.highlightList}>
+                  {monthlyNarrative.emotionalHighlights.map((h: string, i: number) => (
+                    <View key={i} style={styles.highlightItem}>
+                      <Ionicons name="star" size={12} color="#FFD700" />
+                      <Text style={styles.highlightText}>{h}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {monthlyNarrative.lookAhead && (
+                <View style={styles.lookAheadBox}>
+                  <Text style={styles.lookAheadLabel}>다음 달 전망</Text>
+                  <Text style={styles.lookAheadText}>{monthlyNarrative.lookAhead}</Text>
+                </View>
+              )}
+            </GlassCard>
+          ) : null
+        ) : (
+          <ProFeatureCard
+            icon="book"
+            title="AI 월간 내러티브"
+            description="AI가 한 달간의 감정 여정을 이야기로 풀어드려요"
+            style={styles.proCard}
+          />
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -266,4 +341,41 @@ const styles = StyleSheet.create({
   reflectSaveBtnText: { color: '#F0F0F5', fontSize: 14, fontWeight: '600' },
   reflectSaved: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   reflectSavedText: { color: '#7FE5A0', fontSize: 13 },
+  // AI card styles
+  proCard: { marginBottom: 16, marginTop: 0 },
+  aiExpCard: { marginBottom: 16 },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  aiTitle: { color: '#A78BFA', fontSize: 15, fontWeight: '600' },
+  aiExpText: { color: '#F0F0F5', fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  aiReasoningBox: {
+    backgroundColor: 'rgba(167, 139, 250, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#A78BFA',
+  },
+  aiReasoningText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
+  // Monthly narrative
+  aiNarrativeCard: { marginTop: 16, marginBottom: 16 },
+  aiNarrativeText: { color: '#F0F0F5', fontSize: 14, lineHeight: 22, marginBottom: 12 },
+  growthArcBox: {
+    backgroundColor: 'rgba(127, 229, 160, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  growthArcLabel: { color: '#7FE5A0', fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  growthArcText: { color: '#C0C0CC', fontSize: 13 },
+  highlightList: { gap: 6, marginBottom: 12 },
+  highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  highlightText: { color: '#C0C0CC', fontSize: 13 },
+  lookAheadBox: {
+    backgroundColor: 'rgba(167, 139, 250, 0.08)',
+    borderRadius: 8,
+    padding: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#A78BFA',
+  },
+  lookAheadLabel: { color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  lookAheadText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
 });

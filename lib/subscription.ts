@@ -8,11 +8,16 @@ export type GatedFeature =
   | 'data_export'
   | 'stability_change'
   | 'reflection_save'
-  | 'experiment_tracking';
+  | 'experiment_tracking'
+  | 'weekly_ai_summary'
+  | 'ai_pattern_analysis'
+  | 'smart_experiments'
+  | 'monthly_narrative';
 
 const PRO_FEATURES: Set<GatedFeature> = new Set([
   'mirror_unlimited', 'full_archive', 'search', 'advanced_filters',
   'data_export', 'stability_change', 'reflection_save', 'experiment_tracking',
+  'weekly_ai_summary', 'ai_pattern_analysis', 'smart_experiments', 'monthly_narrative',
 ]);
 
 export function canUseFeature(tier: SubscriptionTier, feature: GatedFeature): boolean {

@@ -120,3 +120,37 @@ export function useSaveReflection() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['growth', 'reflection'] }),
   });
 }
+
+// --- AI Insights (Pro only) ---
+
+export function useWeeklyAISummary(isPro: boolean) {
+  return useQuery({
+    queryKey: ['ai-insights', 'weekly-summary'],
+    queryFn: api.aiInsights.weeklySummary,
+    enabled: isPro,
+  });
+}
+
+export function usePatternExplanations(isPro: boolean) {
+  return useQuery({
+    queryKey: ['ai-insights', 'pattern-explanations'],
+    queryFn: api.aiInsights.patternExplanations,
+    enabled: isPro,
+  });
+}
+
+export function useMonthlyNarrative(isPro: boolean, month?: string) {
+  return useQuery({
+    queryKey: ['ai-insights', 'monthly-narrative', month],
+    queryFn: () => api.aiInsights.monthlyNarrative(month),
+    enabled: isPro,
+  });
+}
+
+export function useSmartExperiment(isPro: boolean) {
+  return useQuery({
+    queryKey: ['growth', 'smart-experiment'],
+    queryFn: api.growth.getSmartExperiment,
+    enabled: isPro,
+  });
+}

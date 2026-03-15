@@ -1,9 +1,11 @@
 import { ScrollView, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useWeeklyInsights, usePatterns } from '@/hooks/useApi';
+import { ProFeatureCard } from '@/components/ui/ProFeatureCard';
+import { useWeeklyInsights, usePatterns, useUserProfile, useWeeklyAISummary, usePatternExplanations } from '@/hooks/useApi';
 
 const DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -36,6 +38,11 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { data: weekly, isLoading: weeklyLoading, isError: weeklyError } = useWeeklyInsights();
   const { data: patterns, isLoading: patternsLoading, isError: patternsError } = usePatterns();
+  const { data: user } = useUserProfile();
+
+  const isPro = user?.subscription_tier === 'pro';
+  const { data: aiSummary } = useWeeklyAISummary(isPro);
+  const { data: aiPatterns } = usePatternExplanations(isPro);
 
   const isLoading = weeklyLoading || patternsLoading;
   const isError = weeklyError || patternsError;
@@ -135,6 +142,60 @@ export default function InsightsScreen() {
           </GlassCard>
         )}
 
+        {/* AI Weekly Summary */}
+        {isPro ? (
+          aiSummary ? (
+            <GlassCard style={styles.aiCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 주간 요약</Text>
+              </View>
+              <Text style={styles.aiNarrative}>{aiSummary.narrative}</Text>
+              {aiSummary.highlights?.length > 0 && (
+                <View style={styles.aiHighlights}>
+                  {aiSummary.highlights.map((h: string, i: number) => (
+                    <View key={i} style={styles.aiHighlightItem}>
+                      <Ionicons name="checkmark-circle" size={14} color="#7FE5A0" />
+                      <Text style={styles.aiHighlightText}>{h}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              {aiSummary.suggestion && (
+                <View style={styles.aiSuggestionBox}>
+                  <Text style={styles.aiSuggestionLabel}>이번 주 제안</Text>
+                  <Text style={styles.aiSuggestionText}>{aiSummary.suggestion}</Text>
+                </View>
+              )}
+            </GlassCard>
+          ) : null
+        ) : (
+          <ProFeatureCard
+            icon="sparkles"
+            title="AI 주간 요약"
+            description="AI가 감정 흐름을 분석하여 맞춤형 주간 요약을 제공해요"
+            style={styles.proCard}
+          />
+        )}
+
+        {/* AI Pattern Explanations */}
+        {isPro && aiPatterns && aiPatterns.length > 0 && (
+          <GlassCard style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <Ionicons name="analytics" size={18} color="#A78BFA" />
+              <Text style={styles.aiTitle}>AI 패턴 분석</Text>
+            </View>
+            {aiPatterns.map((p: any, i: number) => (
+              <View key={i} style={[styles.aiPatternItem, i > 0 && styles.aiPatternDivider]}>
+                <Text style={styles.aiPatternExplanation}>{p.explanation}</Text>
+                {p.suggestion && (
+                  <Text style={styles.aiPatternSuggestion}>{p.suggestion}</Text>
+                )}
+              </View>
+            ))}
+          </GlassCard>
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
     </GradientBackground>
@@ -209,4 +270,27 @@ const styles = StyleSheet.create({
   patternTitle: { color: '#4A9EFF', fontSize: 15, fontWeight: '600' },
   patternText: { color: '#F0F0F5', fontSize: 14, lineHeight: 22 },
   patternHint: { color: '#8E8EA0', fontSize: 13, marginTop: 12, fontStyle: 'italic' },
+  // AI card styles
+  aiCard: { marginBottom: 16 },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  aiTitle: { color: '#A78BFA', fontSize: 15, fontWeight: '600' },
+  aiNarrative: { color: '#F0F0F5', fontSize: 14, lineHeight: 22, marginBottom: 12 },
+  aiHighlights: { gap: 8, marginBottom: 12 },
+  aiHighlightItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  aiHighlightText: { color: '#C0C0CC', fontSize: 13 },
+  aiSuggestionBox: {
+    backgroundColor: 'rgba(167, 139, 250, 0.08)',
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#A78BFA',
+  },
+  aiSuggestionLabel: { color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  aiSuggestionText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
+  proCard: { marginBottom: 16 },
+  // AI pattern styles
+  aiPatternItem: { paddingVertical: 8 },
+  aiPatternDivider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
+  aiPatternExplanation: { color: '#F0F0F5', fontSize: 14, lineHeight: 22 },
+  aiPatternSuggestion: { color: '#8E8EA0', fontSize: 13, marginTop: 6, fontStyle: 'italic' },
 });

@@ -153,6 +153,7 @@ export const api = {
     getExperiment: () => request<any>('/growth/experiment'),
     completeExperiment: (status: 'completed' | 'skipped') =>
       request<any>('/growth/experiment', { method: 'POST', body: JSON.stringify({ status }) }),
+    getSmartExperiment: () => request<any>('/growth/smart-experiment'),
     getReflection: (month?: string) => {
       const q = month ? `?month=${encodeURIComponent(month)}` : '';
       return request<any>(`/growth/reflection${q}`);
@@ -170,11 +171,27 @@ export const api = {
       return transformPatterns(raw);
     },
   },
+  aiInsights: {
+    weeklySummary: () => request<any>('/ai-insights/weekly-summary'),
+    patternExplanations: () => request<any[]>('/ai-insights/pattern-explanations'),
+    monthlyNarrative: (month?: string) => {
+      const q = month ? `?month=${encodeURIComponent(month)}` : '';
+      return request<any>(`/ai-insights/monthly-narrative${q}`);
+    },
+  },
+  stripe: {
+    createCheckoutSession: (plan: 'monthly' | 'annual', successUrl?: string, cancelUrl?: string) =>
+      request<{ url: string; mock?: boolean }>('/stripe/checkout-session', {
+        method: 'POST',
+        body: JSON.stringify({ plan, successUrl, cancelUrl }),
+      }),
+    getPortalSession: () => request<{ url: string; mock?: boolean }>('/stripe/portal-session'),
+  },
   users: {
     me: () => request<any>('/users/me'),
     update: (body: { display_name?: string; persona?: string; timezone?: string; reminder_enabled?: boolean }) =>
       request<any>('/users/me', { method: 'PUT', body: JSON.stringify(body) }),
-    // Demo-only: toggle subscription tier (would be handled by RevenueCat in production)
+    // Demo-only: toggle subscription tier (kept for __DEV__ mode)
     updateSubscription: (tier: 'free' | 'pro') =>
       request<any>('/users/me', { method: 'PUT', body: JSON.stringify({ _demo_subscription: tier }) }),
     delete: () => request<any>('/users/me', { method: 'DELETE' }),

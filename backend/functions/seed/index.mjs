@@ -18,6 +18,15 @@ export async function handler(event) {
       console.log('migration-v2 skipped:', migErr.message);
     }
 
+    // Run migration-v3 for payment + AI tables
+    try {
+      const v3Path = join(process.env.LAMBDA_TASK_ROOT, 'migration-v3.sql');
+      const v3Sql = readFileSync(v3Path, 'utf8');
+      await query(v3Sql);
+    } catch (migErr) {
+      console.log('migration-v3 skipped:', migErr.message);
+    }
+
     return ok({ message: 'Database schema initialized successfully' });
   } catch (err) {
     return serverError(err);

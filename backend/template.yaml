@@ -13,6 +13,26 @@ Parameters:
     NoEcho: true
     Default: ''
     Description: OpenAI API key (leave empty for mock Mirror Engine)
+  AnthropicApiKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Anthropic API key (leave empty for mock AI insights)
+  StripeSecretKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Stripe secret key (leave empty for mock checkout)
+  StripeWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: Stripe webhook signing secret
+  RevenueCatWebhookSecret:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: RevenueCat webhook authorization secret
 
 Globals:
   Function:
@@ -248,6 +268,9 @@ Resources:
       CodeUri: functions/growth/
       Layers:
         - !Ref SharedLayer
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
       Events:
         GetExperiment:
           Type: Api
@@ -261,6 +284,12 @@ Resources:
             RestApiId: !Ref OrbitApi
             Path: /growth/experiment
             Method: POST
+        GetSmartExperiment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /growth/smart-experiment
+            Method: GET
         GetReflection:
           Type: Api
           Properties:
@@ -273,6 +302,93 @@ Resources:
             RestApiId: !Ref OrbitApi
             Path: /growth/reflection
             Method: POST
+
+  StripeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-stripe
+      Handler: index.handler
+      CodeUri: functions/stripe/
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          STRIPE_SECRET_KEY: !Ref StripeSecretKey
+      Events:
+        CheckoutSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /stripe/checkout-session
+            Method: POST
+        PortalSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /stripe/portal-session
+            Method: GET
+
+  WebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-webhooks
+      Handler: index.handler
+      CodeUri: functions/webhooks/
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          STRIPE_WEBHOOK_SECRET: !Ref StripeWebhookSecret
+          REVENUECAT_WEBHOOK_SECRET: !Ref RevenueCatWebhookSecret
+      Events:
+        StripeWebhook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /webhooks/stripe
+            Method: POST
+            Auth:
+              Authorizer: NONE
+        RevenueCatWebhook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /webhooks/revenuecat
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+  AIInsightsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-ai-insights
+      Handler: index.handler
+      CodeUri: functions/ai-insights/
+      Timeout: 60
+      Layers:
+        - !Ref SharedLayer
+      Environment:
+        Variables:
+          ANTHROPIC_API_KEY: !Ref AnthropicApiKey
+      Events:
+        WeeklySummary:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /ai-insights/weekly-summary
+            Method: GET
+        PatternExplanations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /ai-insights/pattern-explanations
+            Method: GET
+        MonthlyNarrative:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /ai-insights/monthly-narrative
+            Method: GET
 
   SeedFunction:
     Type: AWS::Serverless::Function
