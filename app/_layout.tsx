@@ -71,6 +71,26 @@ export default function RootLayout() {
             presentation: 'card',
           }}
         />
+        <Stack.Screen
+          name="subscription"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: '#0A0E1A' },
+            headerTintColor: '#F0F0F5',
+            headerTitle: '',
+            presentation: 'modal',
+          }}
+        />
+        <Stack.Screen
+          name="privacy"
+          options={{
+            headerShown: true,
+            headerStyle: { backgroundColor: '#0A0E1A' },
+            headerTintColor: '#F0F0F5',
+            headerTitle: '개인정보 처리방침',
+            presentation: 'card',
+          }}
+        />
       </Stack>
     </QueryClientProvider>
   );

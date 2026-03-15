@@ -54,10 +54,25 @@ async function getWeeklyInsights(sub) {
   const stddev = parseFloat(stats[0].intensity_stddev) || 0;
   const stabilityIndex = Math.max(0, Math.min(100, Math.round(100 - stddev * 20)));
 
+  // Previous week stability for comparison
+  const { rows: prevStats } = await query(
+    `SELECT COALESCE(STDDEV(intensity), 0) as intensity_stddev
+     FROM emotion_entries
+     WHERE user_id = $1
+       AND recorded_at > now() - interval '14 days'
+       AND recorded_at <= now() - interval '7 days'`,
+    [userId]
+  );
+
+  const prevStddev = parseFloat(prevStats[0]?.intensity_stddev) || 0;
+  const prevStabilityIndex = Math.max(0, Math.min(100, Math.round(100 - prevStddev * 20)));
+  const stabilityChange = stabilityIndex - prevStabilityIndex;
+
   return ok({
     entryCount: stats[0].entry_count,
     avgIntensity: parseFloat(parseFloat(stats[0].avg_intensity).toFixed(1)),
     stabilityIndex,
+    stabilityChange,
     topEmotions: topEmotions.map(e => ({ emotionId: e.emotion_id, count: parseInt(e.cnt) })),
     daily: daily.map(d => ({
       day: d.day,

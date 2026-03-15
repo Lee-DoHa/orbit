@@ -151,6 +151,12 @@ Resources:
             RestApiId: !Ref OrbitApi
             Path: /entries/{id}
             Method: DELETE
+        UpdateEntry:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /entries/{id}
+            Method: PUT
 
   MirrorFunction:
     Type: AWS::Serverless::Function
@@ -170,6 +176,18 @@ Resources:
           Properties:
             RestApiId: !Ref OrbitApi
             Path: /mirror
+            Method: POST
+        MirrorUsage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /mirror/usage
+            Method: GET
+        MirrorFeedback:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /mirror/feedback
             Method: POST
 
   InsightsFunction:
@@ -215,6 +233,46 @@ Resources:
             RestApiId: !Ref OrbitApi
             Path: /users/me
             Method: PUT
+        DeleteMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /users/me
+            Method: DELETE
+
+  GrowthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orbit-growth
+      Handler: index.handler
+      CodeUri: functions/growth/
+      Layers:
+        - !Ref SharedLayer
+      Events:
+        GetExperiment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /growth/experiment
+            Method: GET
+        PostExperiment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /growth/experiment
+            Method: POST
+        GetReflection:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /growth/reflection
+            Method: GET
+        PostReflection:
+          Type: Api
+          Properties:
+            RestApiId: !Ref OrbitApi
+            Path: /growth/reflection
+            Method: POST
 
   SeedFunction:
     Type: AWS::Serverless::Function

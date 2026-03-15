@@ -98,7 +98,7 @@ function transformWeekly(raw: any) {
 
   return {
     stabilityIndex: raw.stabilityIndex ?? 0,
-    stabilityChange: 0,
+    stabilityChange: raw.stabilityChange ?? 0,
     weeklyChart,
     topEmotion,
     avgIntensity: raw.avgIntensity ?? 0,
@@ -136,12 +136,28 @@ export const api = {
     create: (body: { emotionIds: number[]; intensity: number; contextTag?: string; note?: string }) =>
       request<any>('/entries', { method: 'POST', body: JSON.stringify(body) }),
     delete: (id: string) => request<any>(`/entries/${id}`, { method: 'DELETE' }),
+    update: (id: string, body: { emotionIds?: number[]; intensity?: number; contextTag?: string; note?: string }) =>
+      request<any>(`/entries/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   },
   mirror: {
     analyze: (entryId: string) =>
       request<{ understanding: string; structure: string; suggestion: string; question: string | null }>(
         '/mirror', { method: 'POST', body: JSON.stringify({ entryId }) }
       ),
+    usage: () => request<{ usedThisWeek: number; limit: number }>('/mirror/usage'),
+    feedback: (aiResponseId: string, helpful: boolean) =>
+      request<any>('/mirror/feedback', { method: 'POST', body: JSON.stringify({ aiResponseId, helpful }) }),
+  },
+  growth: {
+    getExperiment: () => request<any>('/growth/experiment'),
+    completeExperiment: (status: 'completed' | 'skipped') =>
+      request<any>('/growth/experiment', { method: 'POST', body: JSON.stringify({ status }) }),
+    getReflection: (month?: string) => {
+      const q = month ? `?month=${encodeURIComponent(month)}` : '';
+      return request<any>(`/growth/reflection${q}`);
+    },
+    saveReflection: (content: string) =>
+      request<any>('/growth/reflection', { method: 'POST', body: JSON.stringify({ content }) }),
   },
   insights: {
     weekly: async () => {
@@ -157,5 +173,6 @@ export const api = {
     me: () => request<any>('/users/me'),
     update: (body: { display_name?: string; persona?: string; timezone?: string }) =>
       request<any>('/users/me', { method: 'PUT', body: JSON.stringify(body) }),
+    delete: () => request<any>('/users/me', { method: 'DELETE' }),
   },
 };

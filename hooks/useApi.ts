@@ -58,3 +58,65 @@ export function useUpdateUser() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['user', 'me'] }),
   });
 }
+
+export function useDeleteEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.entries.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['entries'] }),
+  });
+}
+
+export function useUpdateEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: any }) => api.entries.update(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['entries'] });
+    },
+  });
+}
+
+export function useMirrorUsage() {
+  return useQuery({
+    queryKey: ['mirror', 'usage'],
+    queryFn: api.mirror.usage,
+  });
+}
+
+export function useMirrorFeedback() {
+  return useMutation({
+    mutationFn: ({ aiResponseId, helpful }: { aiResponseId: string; helpful: boolean }) =>
+      api.mirror.feedback(aiResponseId, helpful),
+  });
+}
+
+export function useExperiment() {
+  return useQuery({
+    queryKey: ['growth', 'experiment'],
+    queryFn: api.growth.getExperiment,
+  });
+}
+
+export function useCompleteExperiment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (status: 'completed' | 'skipped') => api.growth.completeExperiment(status),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['growth', 'experiment'] }),
+  });
+}
+
+export function useReflection(month?: string) {
+  return useQuery({
+    queryKey: ['growth', 'reflection', month],
+    queryFn: () => api.growth.getReflection(month),
+  });
+}
+
+export function useSaveReflection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (content: string) => api.growth.saveReflection(content),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['growth', 'reflection'] }),
+  });
+}

@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 type MirrorData = {
@@ -10,6 +12,8 @@ type MirrorData = {
 
 type Props = {
   data: MirrorData;
+  aiResponseId?: string;
+  onFeedback?: (helpful: boolean) => void;
 };
 
 function MirrorSection({
@@ -36,7 +40,14 @@ function MirrorSection({
   );
 }
 
-export function MirrorCard({ data }: Props) {
+export function MirrorCard({ data, aiResponseId, onFeedback }: Props) {
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+
+  function handleFeedback(helpful: boolean) {
+    setFeedback(helpful ? 'up' : 'down');
+    onFeedback?.(helpful);
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>오늘의 거울</Text>
@@ -65,6 +76,26 @@ export function MirrorCard({ data }: Props) {
           <Text style={styles.questionText}>{data.question}</Text>
         </View>
       )}
+
+      <View style={styles.feedbackRow}>
+        <Text style={styles.feedbackLabel}>이 분석이 도움이 되었나요?</Text>
+        <View style={styles.feedbackButtons}>
+          <Pressable
+            style={[styles.feedbackBtn, feedback === 'up' && styles.feedbackBtnActive]}
+            onPress={() => handleFeedback(true)}
+            disabled={feedback !== null}
+          >
+            <Ionicons name={feedback === 'up' ? 'thumbs-up' : 'thumbs-up-outline'} size={18} color={feedback === 'up' ? '#7FE5A0' : '#8E8EA0'} />
+          </Pressable>
+          <Pressable
+            style={[styles.feedbackBtn, feedback === 'down' && styles.feedbackBtnActiveNeg]}
+            onPress={() => handleFeedback(false)}
+            disabled={feedback !== null}
+          >
+            <Ionicons name={feedback === 'down' ? 'thumbs-down' : 'thumbs-down-outline'} size={18} color={feedback === 'down' ? '#FF6B6B' : '#8E8EA0'} />
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -135,5 +166,33 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     lineHeight: 22,
     fontStyle: 'italic',
+  },
+  feedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  feedbackLabel: {
+    color: '#8E8EA0',
+    fontSize: 12,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  feedbackBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  feedbackBtnActive: {
+    backgroundColor: 'rgba(127,229,160,0.1)',
+  },
+  feedbackBtnActiveNeg: {
+    backgroundColor: 'rgba(255,107,107,0.1)',
   },
 });

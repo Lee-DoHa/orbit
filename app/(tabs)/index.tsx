@@ -7,11 +7,14 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useCreateEntry, useMirrorAnalysis } from '@/hooks/useApi';
+import { useCreateEntry, useMirrorAnalysis, useMirrorUsage, useMirrorFeedback } from '@/hooks/useApi';
+import { useUserStore } from '@/stores/userStore';
+import { canUseFeature, FREE_MIRROR_LIMIT } from '@/lib/subscription';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { CosmicButton } from '@/components/ui/CosmicButton';
@@ -41,6 +44,9 @@ export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const createEntry = useCreateEntry();
   const mirror = useMirrorAnalysis();
+  const { data: mirrorUsage } = useMirrorUsage();
+  const mirrorFeedback = useMirrorFeedback();
+  const subscriptionTier = useUserStore(s => s.subscriptionTier);
 
   const [selectedEmotions, setSelectedEmotions] = useState<EmotionId[]>([]);
   const [intensity, setIntensity] = useState(DEFAULT_INTENSITY);
@@ -57,6 +63,14 @@ export default function TodayScreen() {
     );
   }, []);
 
+  const handleReset = useCallback(() => {
+    setSelectedEmotions([]);
+    setIntensity(DEFAULT_INTENSITY);
+    setContext(null);
+    setNote('');
+    setMirrorResult(null);
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     setMirrorResult(null);
@@ -67,21 +81,31 @@ export default function TodayScreen() {
         contextTag: context ?? undefined,
         note: note || undefined,
       });
+
+      // Check mirror usage limit
+      if (!canUseFeature(subscriptionTier, 'mirror_unlimited')) {
+        const used = mirrorUsage?.usedThisWeek ?? 0;
+        if (used >= FREE_MIRROR_LIMIT) {
+          Alert.alert(
+            'Mirror AI 제한',
+            `무료 플랜은 주 ${FREE_MIRROR_LIMIT}회까지 Mirror 분석을 이용할 수 있어요.`,
+            [
+              { text: '확인' },
+              { text: 'Pro 알아보기', onPress: () => router.push('/subscription' as any) },
+            ]
+          );
+          handleReset();
+          return;
+        }
+      }
+
       const result = await mirror.mutateAsync(entry.id);
       setMirrorResult(result);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
-  }, [canSubmit, selectedEmotions, intensity, context, note, createEntry, mirror]);
-
-  const handleReset = useCallback(() => {
-    setSelectedEmotions([]);
-    setIntensity(DEFAULT_INTENSITY);
-    setContext(null);
-    setNote('');
-    setMirrorResult(null);
-  }, []);
+  }, [canSubmit, selectedEmotions, intensity, context, note, createEntry, mirror, subscriptionTier, mirrorUsage, handleReset]);
 
   const selectedNames = selectedEmotions
     .map((id) => EMOTIONS.find((e) => e.id === id)?.name)
@@ -162,7 +186,12 @@ export default function TodayScreen() {
                   <Text style={styles.summaryValue}>{selectedNames}</Text>
                 </GlassCard>
               ) : null}
-              <MirrorCard data={mirrorResult} />
+              <MirrorCard
+                data={mirrorResult}
+                onFeedback={(helpful) => {
+                  mirrorFeedback.mutate({ aiResponseId: 'latest', helpful });
+                }}
+              />
               <View style={styles.resultActions}>
                 <CosmicButton
                   title="새로운 기록"

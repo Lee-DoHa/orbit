@@ -69,6 +69,58 @@ async function getEntry(event) {
   return ok(rows[0]);
 }
 
+async function updateEntry(event) {
+  const sub = getUserSub(event);
+  const email = getUserEmail(event);
+  const userId = await ensureUser(sub, email);
+  const entryId = event.pathParameters.id;
+  const body = JSON.parse(event.body);
+
+  // Validate ownership
+  const { rows: existing } = await query(
+    'SELECT id FROM emotion_entries WHERE id = $1 AND user_id = $2',
+    [entryId, userId]
+  );
+  if (!existing.length) return notFound('Entry not found');
+
+  const sets = [];
+  const values = [entryId, userId];
+  let idx = 3;
+
+  if (body.emotionIds) {
+    sets.push(`emotion_ids = $${idx}`);
+    values.push(body.emotionIds);
+    idx++;
+  }
+  if (body.intensity) {
+    sets.push(`intensity = $${idx}`);
+    values.push(body.intensity);
+    idx++;
+  }
+  if (body.contextTag !== undefined) {
+    sets.push(`context_tag = $${idx}`);
+    values.push(body.contextTag || null);
+    idx++;
+  }
+  if (body.note !== undefined) {
+    sets.push(`note = $${idx}`);
+    values.push(body.note || null);
+    idx++;
+  }
+
+  if (!sets.length) return badRequest('No fields to update');
+
+  const { rows } = await query(
+    `UPDATE emotion_entries SET ${sets.join(', ')} WHERE id = $1 AND user_id = $2 RETURNING *`,
+    values
+  );
+
+  // Delete old AI response since entry changed
+  await query('DELETE FROM ai_responses WHERE entry_id = $1', [entryId]);
+
+  return ok(rows[0]);
+}
+
 async function deleteEntry(event) {
   const sub = getUserSub(event);
   const entryId = event.pathParameters.id;
@@ -94,6 +146,7 @@ export async function handler(event) {
           ? await getEntry(event)
           : await listEntries(event);
       case 'DELETE': return await deleteEntry(event);
+      case 'PUT': return await updateEntry(event);
       default: return badRequest('Method not allowed');
     }
   } catch (err) {

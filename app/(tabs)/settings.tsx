@@ -1,6 +1,6 @@
 import { ScrollView, Text, View, StyleSheet, Pressable, Switch, ActivityIndicator, Alert, Platform, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
@@ -8,6 +8,9 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useUserProfile, useUpdateUser } from '@/hooks/useApi';
 import { signOut } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
+import { api } from '@/lib/api';
+import { entriesToCSV, downloadCSV } from '@/lib/export';
+import { canUseFeature } from '@/lib/subscription';
 
 const PERSONA_OPTIONS = [
   { key: 'calm', label: '차분함' },
@@ -44,6 +47,10 @@ export default function SettingsScreen() {
   const { data: user, isLoading, isError } = useUserProfile();
   const updateUser = useUpdateUser();
 
+  useEffect(() => {
+    if (user?.reminder_enabled !== undefined) setReminder(user.reminder_enabled);
+  }, [user?.reminder_enabled]);
+
   const displayName = user?.display_name ?? '-';
   const plan = user?.subscription_tier === 'pro' ? 'Pro' : 'Free';
   const currentPersona = user?.persona ?? 'calm';
@@ -69,25 +76,61 @@ export default function SettingsScreen() {
     }
   }
 
-  function handleDataExport() {
-    Alert.alert('데이터 다운로드', '이 기능은 추후 업데이트에서 지원될 예정이에요.');
+  async function handleDataExport() {
+    const tier = (user?.subscription_tier || 'free') as any;
+    if (!canUseFeature(tier, 'data_export')) {
+      Alert.alert('Pro 기능', 'CSV 내보내기는 Pro 플랜에서 사용할 수 있어요.', [
+        { text: '닫기', style: 'cancel' },
+        { text: 'Pro 알아보기', onPress: () => router.push('/subscription') },
+      ]);
+      return;
+    }
+    try {
+      const entries = await api.entries.list({ limit: 9999 });
+      const csv = entriesToCSV(entries);
+      const filename = `orbit-감정기록-${new Date().toISOString().slice(0, 10)}.csv`;
+      downloadCSV(csv, filename);
+      Alert.alert('내보내기 완료', 'CSV 파일이 다운로드되었습니다.');
+    } catch {
+      Alert.alert('오류', '데이터를 불러올 수 없습니다.');
+    }
   }
 
-  function handleDataDelete() {
+  async function handleDataDelete() {
     Alert.alert(
-      '데이터 삭제',
-      '모든 감정 기록과 인사이트가 삭제됩니다. 이 작업은 되돌릴 수 없어요.',
+      '계정 삭제',
+      '모든 감정 기록, AI 분석, 인사이트가 영구 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.',
       [
         { text: '취소', style: 'cancel' },
-        { text: '삭제', style: 'destructive', onPress: () => {
-          Alert.alert('안내', '데이터 삭제 기능은 추후 업데이트에서 지원될 예정이에요.');
-        }},
+        {
+          text: '계정 삭제',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('최종 확인', '정말로 계정을 삭제하시겠어요?', [
+              { text: '취소', style: 'cancel' },
+              {
+                text: '삭제 확인',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await api.users.delete();
+                    await signOut();
+                    useUserStore.getState().logout();
+                    router.replace('/auth');
+                  } catch {
+                    Alert.alert('오류', '계정 삭제에 실패했습니다. 다시 시도해주세요.');
+                  }
+                },
+              },
+            ]);
+          },
+        },
       ]
     );
   }
 
   function handlePrivacy() {
-    Alert.alert('개인정보 처리방침', 'ORBIT은 사용자의 감정 데이터를 안전하게 보호합니다. 자세한 내용은 추후 공개될 예정이에요.');
+    router.push('/privacy');
   }
 
   async function handleLogout() {
@@ -131,7 +174,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>계정</Text>
           <SettingRow icon="person-outline" title="프로필" subtitle={displayName} onPress={handleEditProfile} />
-          <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} onPress={() => Alert.alert('구독 관리', '현재 Free 플랜을 사용 중이에요. Pro 플랜은 추후 제공될 예정입니다.')} />
+          <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} onPress={() => router.push('/subscription')} />
         </View>
 
         <View style={styles.section}>
@@ -142,7 +185,10 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={reminder}
-                onValueChange={setReminder}
+                onValueChange={(val) => {
+                  setReminder(val);
+                  updateUser.mutate({ reminder_enabled: val } as any);
+                }}
                 trackColor={{ false: '#333', true: '#4A9EFF' }}
                 thumbColor="#fff"
               />
@@ -153,6 +199,20 @@ export default function SettingsScreen() {
             title="AI 페르소나"
             subtitle={personaLabel}
             onPress={cyclePersona}
+          />
+          <SettingRow
+            icon="time-outline"
+            title="타임존"
+            subtitle={user?.timezone || 'Asia/Seoul'}
+            onPress={() => {
+              const timezones = ['Asia/Seoul', 'Asia/Tokyo', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin'];
+              Alert.alert('타임존 설정', '사용할 타임존을 선택하세요',
+                timezones.map(tz => ({
+                  text: tz,
+                  onPress: () => updateUser.mutate({ timezone: tz }),
+                })).concat([{ text: '취소', style: 'cancel' as any, onPress: undefined as any }])
+              );
+            }}
           />
         </View>
 

@@ -1,9 +1,13 @@
-import { ScrollView, Text, View, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, Text, View, StyleSheet, Pressable, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useWeeklyInsights } from '@/hooks/useApi';
+import { useWeeklyInsights, useUserProfile, useCompleteExperiment, useSaveReflection } from '@/hooks/useApi';
+import { canUseFeature } from '@/lib/subscription';
 
 const STAGES = [
   { name: 'Seed', label: '씨앗', threshold: 0 },
@@ -34,11 +38,54 @@ function getStageDescription(stageIdx: number, stabilityIndex: number) {
 
 export default function GrowthScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { data: weekly, isLoading } = useWeeklyInsights();
+  const { data: user } = useUserProfile();
+  const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
+  const completeExperiment = useCompleteExperiment();
+  const saveReflection = useSaveReflection();
+  const [experimentDone, setExperimentDone] = useState(false);
+  const [reflectionText, setReflectionText] = useState('');
+  const [reflectionSaved, setReflectionSaved] = useState(false);
 
   const entryCount = weekly?.entryCount ?? 0;
   const stabilityIndex = weekly?.stabilityIndex ?? 0;
   const currentStage = getStageIndex(entryCount);
+
+  function handleExperimentComplete() {
+    completeExperiment.mutate('completed', {
+      onSuccess: () => {
+        setExperimentDone(true);
+        Alert.alert('완료!', '이번 주 실험을 완료했어요');
+      },
+      onError: () => setExperimentDone(true),
+    });
+  }
+
+  function handleExperimentSkip() {
+    completeExperiment.mutate('skipped', {
+      onSuccess: () => setExperimentDone(true),
+      onError: () => setExperimentDone(true),
+    });
+  }
+
+  function handleSaveReflection() {
+    if (!canUseFeature(tier, 'reflection_save')) {
+      Alert.alert('Pro 기능', '월간 회고 저장은 Pro에서 사용할 수 있어요.', [
+        { text: '닫기' },
+        { text: 'Pro 알아보기', onPress: () => router.push('/subscription' as any) },
+      ]);
+      return;
+    }
+    if (!reflectionText.trim()) return;
+    saveReflection.mutate(reflectionText.trim(), {
+      onSuccess: () => {
+        setReflectionSaved(true);
+        Alert.alert('저장 완료', '회고가 저장되었습니다.');
+      },
+      onError: () => Alert.alert('오류', '저장에 실패했습니다.'),
+    });
+  }
 
   return (
     <GradientBackground>
@@ -103,14 +150,23 @@ export default function GrowthScreen() {
           <Text style={styles.expText}>
             이번 주 2회, 10분 산책을 시도해보세요.
           </Text>
-          <View style={styles.expButtons}>
-            <Pressable style={styles.expBtn}>
-              <Text style={styles.expBtnText}>완료</Text>
-            </Pressable>
-            <Pressable style={[styles.expBtn, styles.expBtnGhost]}>
-              <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
-            </Pressable>
-          </View>
+          {experimentDone ? (
+            <View style={styles.expDone}>
+              <Ionicons name="checkmark-circle" size={24} color="#7FE5A0" />
+              <Text style={styles.expDoneText}>
+                이번 주 실험을 {completeExperiment.variables === 'completed' ? '완료' : '건너뛰기'}했어요
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.expButtons}>
+              <Pressable style={styles.expBtn} onPress={handleExperimentComplete}>
+                <Text style={styles.expBtnText}>완료</Text>
+              </Pressable>
+              <Pressable style={[styles.expBtn, styles.expBtnGhost]} onPress={handleExperimentSkip}>
+                <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
+              </Pressable>
+            </View>
+          )}
         </GlassCard>
 
         <GlassCard>
@@ -118,6 +174,30 @@ export default function GrowthScreen() {
           <Text style={styles.reflectQ}>
             한 달 전과 비교했을 때, 가장 달라진 점은 무엇인가요?
           </Text>
+          <TextInput
+            style={styles.reflectInput}
+            placeholder="회고를 작성해보세요..."
+            placeholderTextColor="#5A5A6E"
+            value={reflectionText}
+            onChangeText={setReflectionText}
+            multiline
+            maxLength={500}
+            editable={!reflectionSaved}
+          />
+          {!reflectionSaved ? (
+            <Pressable
+              style={[styles.reflectSaveBtn, !reflectionText.trim() && { opacity: 0.4 }]}
+              onPress={handleSaveReflection}
+              disabled={!reflectionText.trim()}
+            >
+              <Text style={styles.reflectSaveBtnText}>저장</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.reflectSaved}>
+              <Ionicons name="checkmark-circle" size={16} color="#7FE5A0" />
+              <Text style={styles.reflectSavedText}>저장됨</Text>
+            </View>
+          )}
         </GlassCard>
 
         <View style={{ height: 32 }} />
@@ -166,6 +246,13 @@ const styles = StyleSheet.create({
   expBtnText: { color: '#F0F0F5', fontSize: 14, fontWeight: '600' },
   expBtnGhost: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   expBtnGhostText: { color: '#8E8EA0' },
+  expDone: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: 'rgba(127,229,160,0.08)', borderRadius: 12 },
+  expDoneText: { color: '#7FE5A0', fontSize: 14 },
   reflectTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600', marginBottom: 12 },
   reflectQ: { color: '#8E8EA0', fontSize: 14, lineHeight: 22 },
+  reflectInput: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 12, color: '#F0F0F5', fontSize: 14, minHeight: 80, textAlignVertical: 'top', marginTop: 12, lineHeight: 22 },
+  reflectSaveBtn: { marginTop: 12, backgroundColor: '#4A9EFF', paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  reflectSaveBtnText: { color: '#F0F0F5', fontSize: 14, fontWeight: '600' },
+  reflectSaved: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  reflectSavedText: { color: '#7FE5A0', fontSize: 13 },
 });

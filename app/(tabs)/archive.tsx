@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ScrollView, Text, View, StyleSheet, Pressable, FlatList, ActivityIndicator } from 'react-native';
+import { ScrollView, Text, View, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { SectionHeader } from '@/components/ui/SectionHeader';
-import { useEntries } from '@/hooks/useApi';
+import { useEntries, useUserProfile } from '@/hooks/useApi';
+import { canUseFeature } from '@/lib/subscription';
+import { CONTEXTS } from '@/lib/constants';
 
 const EMOTION_COLORS: Record<string, string> = {
   긴장: '#FFB84D',
@@ -37,6 +39,7 @@ type EntryItem = {
   context: string;
   note: string | null;
   mirrorSummary: string;
+  recorded_at?: string;
 };
 
 function IntensityDots({ value }: { value: number }) {
@@ -104,18 +107,43 @@ function EntryCard({ item, onPress }: { item: EntryItem; onPress: () => void }) 
   );
 }
 
-const FILTER_OPTIONS = ['전체', '긴장', '불안', '안정', '피로', '집중', '만족'];
+const FILTER_OPTIONS = ['전체', '긴장', '불안', '안정', '피로', '집중', '만족', '설렘', '무기력', '외로움', '혼란'];
 
 export default function ArchiveScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [filter, setFilter] = useState('전체');
+  const [searchText, setSearchText] = useState('');
+  const [contextFilter, setContextFilter] = useState<string | null>(null);
   const { data: entries = [], isLoading, isError } = useEntries();
+  const { data: user } = useUserProfile();
+  const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
+  const isPro = tier === 'pro';
 
-  const filtered =
+  let filtered =
     filter === '전체'
       ? entries
       : entries.filter((e: EntryItem) => e.emotions.includes(filter));
+
+  // Free tier: last 7 days only
+  if (!canUseFeature(tier, 'full_archive')) {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    filtered = filtered.filter((e: any) => new Date(e.recorded_at) >= sevenDaysAgo);
+  }
+
+  // Pro: search
+  if (searchText && isPro) {
+    const q = searchText.toLowerCase();
+    filtered = filtered.filter((e: any) =>
+      e.note?.toLowerCase().includes(q) || e.emotions.some((em: string) => em.includes(q))
+    );
+  }
+
+  // Pro: context filter
+  if (contextFilter && isPro) {
+    filtered = filtered.filter((e: any) => e.context === contextFilter);
+  }
 
   return (
     <GradientBackground>
@@ -142,6 +170,52 @@ export default function ArchiveScreen() {
             </Pressable>
           ))}
         </ScrollView>
+
+        {isPro ? (
+          <View style={styles.searchContainer}>
+            <Ionicons name="search-outline" size={18} color="#8E8EA0" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="기록 검색..."
+              placeholderTextColor="#5A5A6E"
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+            {searchText.length > 0 && (
+              <Pressable onPress={() => setSearchText('')}>
+                <Ionicons name="close-circle" size={18} color="#5A5A6E" />
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          <Pressable style={styles.proSearchBanner} onPress={() => router.push('/subscription' as any)}>
+            <Ionicons name="search-outline" size={16} color="#4A9EFF" />
+            <Text style={styles.proSearchText}>검색 및 고급 필터</Text>
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
+          </Pressable>
+        )}
+
+        {isPro && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.contextFilterScroll}>
+            <Pressable
+              onPress={() => setContextFilter(null)}
+              style={[styles.filterChip, !contextFilter && styles.filterChipActive]}
+            >
+              <Text style={[styles.filterText, !contextFilter && styles.filterTextActive]}>전체 상황</Text>
+            </Pressable>
+            {CONTEXTS.map(c => (
+              <Pressable
+                key={c.id}
+                onPress={() => setContextFilter(c.name === contextFilter ? null : c.name)}
+                style={[styles.filterChip, contextFilter === c.name && styles.filterChipActive]}
+              >
+                <Text style={[styles.filterText, contextFilter === c.name && styles.filterTextActive]}>{c.name}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         {isLoading ? (
           <View style={styles.loading}>
@@ -172,6 +246,13 @@ export default function ArchiveScreen() {
             contentContainerStyle={styles.list}
             showsVerticalScrollIndicator={false}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
+            ListFooterComponent={
+              !isPro && entries.length > filtered.length ? (
+                <Pressable style={styles.archiveBanner} onPress={() => router.push('/subscription' as any)}>
+                  <Text style={styles.archiveBannerText}>Pro로 업그레이드하면 전체 기록을 볼 수 있어요</Text>
+                </Pressable>
+              ) : null
+            }
           />
         )}
       </View>
@@ -240,4 +321,13 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyTitle: { color: '#F0F0F5', fontSize: 17, fontWeight: '600', marginBottom: 8 },
   emptySubtitle: { color: '#8E8EA0', fontSize: 14, textAlign: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, gap: 8 },
+  searchInput: { flex: 1, color: '#F0F0F5', fontSize: 14 },
+  proSearchBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(74,158,255,0.08)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, gap: 8 },
+  proSearchText: { flex: 1, color: '#4A9EFF', fontSize: 13 },
+  proBadge: { backgroundColor: 'rgba(74,158,255,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  proBadgeText: { color: '#4A9EFF', fontSize: 10, fontWeight: '700' },
+  contextFilterScroll: { maxHeight: 44, marginBottom: 12 },
+  archiveBanner: { padding: 16, backgroundColor: 'rgba(74,158,255,0.08)', borderRadius: 12, marginTop: 12, alignItems: 'center' },
+  archiveBannerText: { color: '#4A9EFF', fontSize: 13 },
 });

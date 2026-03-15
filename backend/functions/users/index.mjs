@@ -13,7 +13,7 @@ async function getOrCreateUser(sub, email) {
 }
 
 async function updateUser(sub, updates) {
-  const allowed = ['display_name', 'persona', 'timezone'];
+  const allowed = ['display_name', 'persona', 'timezone', 'reminder_enabled', 'subscription_tier'];
   const sets = [];
   const values = [sub];
   let idx = 2;
@@ -38,6 +38,26 @@ async function updateUser(sub, updates) {
   return ok(rows[0]);
 }
 
+async function deleteUser(sub) {
+  // Soft delete: set deleted_at
+  const { rows } = await query(
+    `UPDATE users SET deleted_at = now(), updated_at = now() WHERE cognito_sub = $1 RETURNING id`,
+    [sub]
+  );
+  if (!rows.length) return ok({ deleted: false });
+
+  const userId = rows[0].id;
+
+  // Cascade delete all user data
+  await query('DELETE FROM ai_responses WHERE user_id = $1', [userId]);
+  await query('DELETE FROM emotion_entries WHERE user_id = $1', [userId]);
+  await query('DELETE FROM experiment_responses WHERE user_id = $1', [userId]);
+  await query('DELETE FROM reflections WHERE user_id = $1', [userId]);
+  await query('DELETE FROM mirror_feedback WHERE user_id = $1', [userId]);
+
+  return ok({ deleted: true });
+}
+
 export async function handler(event) {
   try {
     if (event.httpMethod === 'OPTIONS') return ok({});
@@ -53,6 +73,9 @@ export async function handler(event) {
       case 'PUT': {
         const body = JSON.parse(event.body);
         return await updateUser(sub, body);
+      }
+      case 'DELETE': {
+        return await deleteUser(sub);
       }
       default:
         return badRequest('Method not allowed');
