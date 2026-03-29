@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 type MirrorData = {
   understanding: string;
@@ -27,14 +28,16 @@ function MirrorSection({
   content: string;
   accent: string;
 }) {
+  const { colors } = useTheme();
+
   return (
     <View style={sectionStyles.container}>
       <View style={[sectionStyles.badge, { backgroundColor: accent + '20' }]}>
         <Text style={[sectionStyles.badgeText, { color: accent }]}>{number}</Text>
       </View>
       <View style={sectionStyles.textArea}>
-        <Text style={sectionStyles.title}>{title}</Text>
-        <Text style={sectionStyles.content}>{content}</Text>
+        <Text style={[sectionStyles.title, { color: colors.text.secondary }]}>{title}</Text>
+        <Text style={[sectionStyles.content, { color: colors.text.primary }]}>{content}</Text>
       </View>
     </View>
   );
@@ -42,6 +45,7 @@ function MirrorSection({
 
 export function MirrorCard({ data, aiResponseId, onFeedback }: Props) {
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const { colors } = useTheme();
 
   function handleFeedback(helpful: boolean) {
     setFeedback(helpful ? 'up' : 'down');
@@ -49,50 +53,60 @@ export function MirrorCard({ data, aiResponseId, onFeedback }: Props) {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>오늘의 거울</Text>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface.card,
+          borderColor: colors.surface.cardBorder,
+        },
+      ]}
+    >
+      <Text style={[styles.header, { color: colors.text.primary }]}>오늘의 거울</Text>
 
-      <MirrorSection
-        number="1"
-        title="이해"
-        content={data.understanding}
-        accent={colors.accent.cyan}
-      />
-      <MirrorSection
-        number="2"
-        title="구조"
-        content={data.structure}
-        accent={colors.accent.blue}
-      />
-      <MirrorSection
-        number="3"
-        title="제안"
-        content={data.suggestion}
-        accent={colors.accent.violet}
-      />
+      <MirrorSection number="1" title="이해" content={data.understanding} accent={colors.accent.cyan} />
+      <MirrorSection number="2" title="구조" content={data.structure} accent={colors.accent.blue} />
+      <MirrorSection number="3" title="제안" content={data.suggestion} accent={colors.accent.violet} />
+
       {data.question && (
-        <View style={styles.questionBox}>
-          <Text style={styles.questionLabel}>성찰 질문</Text>
-          <Text style={styles.questionText}>{data.question}</Text>
+        <View style={[styles.questionBox, { borderTopColor: colors.surface.cardBorder }]}>
+          <Text style={[styles.questionLabel, { color: colors.accent.violet }]}>성찰 질문</Text>
+          <Text style={[styles.questionText, { color: colors.text.secondary }]}>{data.question}</Text>
         </View>
       )}
 
-      <View style={styles.feedbackRow}>
-        <Text style={styles.feedbackLabel}>이 분석이 도움이 되었나요?</Text>
+      <View style={[styles.feedbackRow, { borderTopColor: colors.surface.cardBorder }]}>
+        <Text style={[styles.feedbackLabel, { color: colors.text.secondary }]}>이 분석이 도움이 되었나요?</Text>
         <View style={styles.feedbackButtons}>
           <Pressable
-            style={[styles.feedbackBtn, feedback === 'up' && styles.feedbackBtnActive]}
+            style={[
+              styles.feedbackBtn,
+              { backgroundColor: colors.surface.card },
+              feedback === 'up' && { backgroundColor: colors.status.success + '1A' },
+            ]}
             onPress={() => handleFeedback(true)}
             disabled={feedback !== null}
           >
-            <Ionicons name={feedback === 'up' ? 'thumbs-up' : 'thumbs-up-outline'} size={18} color={feedback === 'up' ? colors.status.success : colors.text.secondary} />
+            <Ionicons
+              name={feedback === 'up' ? 'thumbs-up' : 'thumbs-up-outline'}
+              size={18}
+              color={feedback === 'up' ? colors.status.success : colors.text.secondary}
+            />
           </Pressable>
           <Pressable
-            style={[styles.feedbackBtn, feedback === 'down' && styles.feedbackBtnActiveNeg]}
+            style={[
+              styles.feedbackBtn,
+              { backgroundColor: colors.surface.card },
+              feedback === 'down' && { backgroundColor: colors.status.error + '1A' },
+            ]}
             onPress={() => handleFeedback(false)}
             disabled={feedback !== null}
           >
-            <Ionicons name={feedback === 'down' ? 'thumbs-down' : 'thumbs-down-outline'} size={18} color={feedback === 'down' ? colors.status.error : colors.text.secondary} />
+            <Ionicons
+              name={feedback === 'down' ? 'thumbs-down' : 'thumbs-down-outline'}
+              size={18}
+              color={feedback === 'down' ? colors.status.error : colors.text.secondary}
+            />
           </Pressable>
         </View>
       </View>
@@ -121,7 +135,6 @@ const sectionStyles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: colors.text.secondary,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     textTransform: 'uppercase',
@@ -129,7 +142,6 @@ const sectionStyles = StyleSheet.create({
     marginBottom: 4,
   },
   content: {
-    color: colors.text.primary,
     fontSize: fontSize.md,
     lineHeight: 22,
   },
@@ -137,14 +149,11 @@ const sectionStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface.glass,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     padding: spacing.lg,
   },
   header: {
-    color: colors.text.primary,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     marginBottom: spacing.lg,
@@ -153,16 +162,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: colors.surface.glassBorder,
   },
   questionLabel: {
-    color: colors.accent.violet,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     marginBottom: 6,
   },
   questionText: {
-    color: colors.text.secondary,
     fontSize: fontSize.md,
     lineHeight: 22,
     fontStyle: 'italic',
@@ -174,10 +180,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.surface.glassBorder,
   },
   feedbackLabel: {
-    color: colors.text.secondary,
     fontSize: fontSize.xs,
   },
   feedbackButtons: {
@@ -187,12 +191,5 @@ const styles = StyleSheet.create({
   feedbackBtn: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: colors.surface.glass,
-  },
-  feedbackBtnActive: {
-    backgroundColor: colors.status.success + '1A',
-  },
-  feedbackBtnActiveNeg: {
-    backgroundColor: colors.status.error + '1A',
   },
 });

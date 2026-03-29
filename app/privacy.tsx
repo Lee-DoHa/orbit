@@ -1,7 +1,8 @@
 import { ScrollView, View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/ui/GradientBackground';
-import { colors, spacing, fontSize, fontWeight } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 const CONTACT_EMAIL = 'orbit.app.kr@gmail.com';
 
@@ -43,6 +44,7 @@ const SECTIONS: { title: string; body: string; hasEmail?: boolean }[] = [
 
 export default function PrivacyScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
     <GradientBackground>
@@ -51,18 +53,18 @@ export default function PrivacyScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>ORBIT 개인정보 처리방침</Text>
+        <Text style={[styles.title, { color: colors.text.primary }]}>ORBIT 개인정보 처리방침</Text>
 
         {SECTIONS.map((section, index) => (
           <View key={index} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Text style={styles.sectionBody}>{section.body}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.accent.blue }]}>{section.title}</Text>
+            <Text style={[styles.sectionBody, { color: colors.text.secondary }]}>{section.body}</Text>
             {section.hasEmail && (
               <Pressable
                 style={styles.emailLink}
                 onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
               >
-                <Text style={styles.emailText}>{CONTACT_EMAIL}</Text>
+                <Text style={[styles.emailText, { color: colors.accent.blue }]}>{CONTACT_EMAIL}</Text>
               </Pressable>
             )}
           </View>
@@ -82,7 +84,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-    color: colors.text.primary,
     marginBottom: spacing.xl,
   },
   section: {
@@ -91,12 +92,10 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
-    color: colors.accent.blue,
     marginBottom: spacing.sm,
   },
   sectionBody: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
     lineHeight: 20,
   },
   emailLink: {
@@ -104,7 +103,6 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: fontSize.sm,
-    color: colors.accent.blue,
     textDecorationLine: 'underline',
   },
 });

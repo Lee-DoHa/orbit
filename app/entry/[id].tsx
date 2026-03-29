@@ -11,17 +11,13 @@ import { ContextTagSelector } from '@/components/emotion/ContextTagSelector';
 import { useEntry, useDeleteEntry, useUpdateEntry } from '@/hooks/useApi';
 import { useQueryClient } from '@tanstack/react-query';
 import { EMOTIONS, CONTEXTS, type EmotionId, type ContextId } from '@/lib/constants';
-
-const EMOTION_COLORS: Record<string, string> = {
-  긴장: '#FFB84D', 불안: '#FF6B6B', 피로: '#7B8794', 안정: '#5CE0D8',
-  설렘: '#FF8FAB', 무기력: '#6B7280', 집중: '#4A9EFF', 만족: '#7FE5A0',
-  외로움: '#A78BFA', 혼란: '#F59E0B',
-};
+import { useTheme } from '@/theme/ThemeContext';
 
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
   const { data: entry, isLoading, isError, refetch } = useEntry(id!);
   const deleteEntry = useDeleteEntry();
   const updateEntry = useUpdateEntry();
@@ -92,7 +88,7 @@ export default function EntryDetailScreen() {
     return (
       <GradientBackground>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A9EFF" />
+          <ActivityIndicator size="large" color={colors.accent.blue} />
         </View>
       </GradientBackground>
     );
@@ -102,13 +98,13 @@ export default function EntryDetailScreen() {
     return (
       <GradientBackground>
         <View style={styles.loadingContainer}>
-          <Text style={styles.emptyText}>기록을 찾을 수 없습니다.</Text>
-          <Pressable style={styles.retryButton} onPress={() => refetch()}>
-            <Ionicons name="refresh-outline" size={18} color="#4A9EFF" />
-            <Text style={styles.retryButtonText}>다시 시도</Text>
+          <Text style={[styles.emptyText, { color: colors.text.secondary }]}>기록을 찾을 수 없습니다.</Text>
+          <Pressable style={[styles.retryButton, { backgroundColor: colors.accent.blueSubtle, borderColor: `${colors.accent.blue}4D` }]} onPress={() => refetch()}>
+            <Ionicons name="refresh-outline" size={18} color={colors.accent.blue} />
+            <Text style={[styles.retryButtonText, { color: colors.accent.blue }]}>다시 시도</Text>
           </Pressable>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>돌아가기</Text>
+            <Text style={[styles.backButtonText, { color: colors.text.secondary }]}>돌아가기</Text>
           </Pressable>
         </View>
       </GradientBackground>
@@ -122,62 +118,62 @@ export default function EntryDetailScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.date}>{entry.date} ({entry.dayOfWeek})</Text>
+        <Text style={[styles.date, { color: colors.text.primary }]}>{entry.date} ({entry.dayOfWeek})</Text>
 
         <View style={styles.actionRow}>
           <Pressable
-            style={[styles.actionBtn, (isSaving || isDeleting) && styles.actionBtnDisabled]}
+            style={[styles.actionBtn, { backgroundColor: colors.surface.card }, (isSaving || isDeleting) && styles.actionBtnDisabled]}
             onPress={isEditing ? handleSave : startEdit}
             disabled={isSaving || isDeleting}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#4A9EFF" />
+              <ActivityIndicator size="small" color={colors.accent.blue} />
             ) : (
-              <Ionicons name={isEditing ? "checkmark-outline" : "create-outline"} size={20} color="#4A9EFF" />
+              <Ionicons name={isEditing ? "checkmark-outline" : "create-outline"} size={20} color={colors.accent.blue} />
             )}
-            <Text style={styles.actionText}>{isEditing ? (isSaving ? '저장 중...' : '저장') : '수정'}</Text>
+            <Text style={[styles.actionText, { color: colors.accent.blue }]}>{isEditing ? (isSaving ? '저장 중...' : '저장') : '수정'}</Text>
           </Pressable>
           {isEditing && (
             <Pressable
-              style={[styles.actionBtn, isSaving && styles.actionBtnDisabled]}
+              style={[styles.actionBtn, { backgroundColor: colors.surface.card }, isSaving && styles.actionBtnDisabled]}
               onPress={() => setIsEditing(false)}
               disabled={isSaving}
             >
-              <Ionicons name="close-outline" size={20} color="#8E8EA0" />
-              <Text style={[styles.actionText, { color: '#8E8EA0' }]}>취소</Text>
+              <Ionicons name="close-outline" size={20} color={colors.text.secondary} />
+              <Text style={[styles.actionText, { color: colors.text.secondary }]}>취소</Text>
             </Pressable>
           )}
           <Pressable
-            style={[styles.actionBtn, (isSaving || isDeleting) && styles.actionBtnDisabled]}
+            style={[styles.actionBtn, { backgroundColor: colors.surface.card }, (isSaving || isDeleting) && styles.actionBtnDisabled]}
             onPress={handleDelete}
             disabled={isSaving || isDeleting}
           >
             {isDeleting ? (
-              <ActivityIndicator size="small" color="#FF6B6B" />
+              <ActivityIndicator size="small" color={colors.status.error} />
             ) : (
-              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+              <Ionicons name="trash-outline" size={20} color={colors.status.error} />
             )}
-            <Text style={[styles.actionText, { color: '#FF6B6B' }]}>{isDeleting ? '삭제 중...' : '삭제'}</Text>
+            <Text style={[styles.actionText, { color: colors.status.error }]}>{isDeleting ? '삭제 중...' : '삭제'}</Text>
           </Pressable>
         </View>
 
         {isEditing ? (
           <GlassCard style={styles.card}>
-            <Text style={styles.label}>감정 수정</Text>
+            <Text style={[styles.label, { color: colors.text.secondary }]}>감정 수정</Text>
             <EmotionChipGroup selected={editEmotions} onToggle={(id) => {
               setEditEmotions(prev => prev.includes(id) ? prev.filter(e => e !== id) : [...prev, id]);
             }} />
-            <Text style={[styles.label, { marginTop: 16 }]}>강도</Text>
+            <Text style={[styles.label, { marginTop: 16, color: colors.text.secondary }]}>강도</Text>
             <IntensitySlider value={editIntensity} onChange={setEditIntensity} />
-            <Text style={[styles.label, { marginTop: 16 }]}>상황</Text>
+            <Text style={[styles.label, { marginTop: 16, color: colors.text.secondary }]}>상황</Text>
             <ContextTagSelector selected={editContext} onSelect={setEditContext} />
-            <Text style={[styles.label, { marginTop: 16 }]}>메모</Text>
+            <Text style={[styles.label, { marginTop: 16, color: colors.text.secondary }]}>메모</Text>
             <TextInput
-              style={styles.editInput}
+              style={[styles.editInput, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder, color: colors.text.primary }]}
               value={editNote}
               onChangeText={setEditNote}
               placeholder="한 줄 기록"
-              placeholderTextColor="#5A5A6E"
+              placeholderTextColor={colors.text.tertiary}
               multiline
               maxLength={200}
             />
@@ -185,42 +181,45 @@ export default function EntryDetailScreen() {
         ) : (
           <>
             <GlassCard style={styles.card}>
-              <Text style={styles.label}>감정</Text>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>감정</Text>
               <View style={styles.emotionRow}>
-                {(entry.emotions || []).map((e: string) => (
-                  <View
-                    key={e}
-                    style={[
-                      styles.emotionBadge,
-                      { backgroundColor: (EMOTION_COLORS[e] || '#8E8EA0') + '20' },
-                    ]}
-                  >
+                {(entry.emotions || []).map((e: string) => {
+                  const emotionColor = colors.emotion[e as keyof typeof colors.emotion] || colors.text.secondary;
+                  return (
                     <View
-                      style={[styles.emotionDot, { backgroundColor: EMOTION_COLORS[e] || '#8E8EA0' }]}
-                    />
-                    <Text style={[styles.emotionText, { color: EMOTION_COLORS[e] || '#8E8EA0' }]}>
-                      {e}
-                    </Text>
-                  </View>
-                ))}
+                      key={e}
+                      style={[
+                        styles.emotionBadge,
+                        { backgroundColor: emotionColor + '20' },
+                      ]}
+                    >
+                      <View
+                        style={[styles.emotionDot, { backgroundColor: emotionColor }]}
+                      />
+                      <Text style={[styles.emotionText, { color: emotionColor }]}>
+                        {e}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
 
               <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>강도</Text>
-                  <Text style={styles.metaValue}>{entry.intensity}/5</Text>
+                <View style={[styles.metaItem, { backgroundColor: colors.surface.card }]}>
+                  <Text style={[styles.metaLabel, { color: colors.text.secondary }]}>강도</Text>
+                  <Text style={[styles.metaValue, { color: colors.text.primary }]}>{entry.intensity}/5</Text>
                 </View>
-                <View style={styles.metaItem}>
-                  <Text style={styles.metaLabel}>상황</Text>
-                  <Text style={styles.metaValue}>{entry.context}</Text>
+                <View style={[styles.metaItem, { backgroundColor: colors.surface.card }]}>
+                  <Text style={[styles.metaLabel, { color: colors.text.secondary }]}>상황</Text>
+                  <Text style={[styles.metaValue, { color: colors.text.primary }]}>{entry.context}</Text>
                 </View>
               </View>
             </GlassCard>
 
             {entry.note && (
               <GlassCard style={styles.card}>
-                <Text style={styles.label}>기록</Text>
-                <Text style={styles.noteText}>{entry.note}</Text>
+                <Text style={[styles.label, { color: colors.text.secondary }]}>기록</Text>
+                <Text style={[styles.noteText, { color: colors.text.primary }]}>{entry.note}</Text>
               </GlassCard>
             )}
           </>
@@ -237,27 +236,27 @@ export default function EntryDetailScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 100 },
-  date: { color: '#F0F0F5', fontSize: 20, fontWeight: '700', marginBottom: 20 },
+  date: { fontSize: 20, fontWeight: '700', marginBottom: 20 },
   card: { marginBottom: 16 },
-  label: { color: '#8E8EA0', fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  label: { fontSize: 12, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   emotionRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   emotionBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, gap: 6 },
   emotionDot: { width: 8, height: 8, borderRadius: 4 },
   emotionText: { fontSize: 14, fontWeight: '600' },
   metaRow: { flexDirection: 'row', gap: 16 },
-  metaItem: { flex: 1, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 12, alignItems: 'center' },
-  metaLabel: { color: '#8E8EA0', fontSize: 11, marginBottom: 4 },
-  metaValue: { color: '#F0F0F5', fontSize: 17, fontWeight: '700' },
-  noteText: { color: '#F0F0F5', fontSize: 15, lineHeight: 24 },
+  metaItem: { flex: 1, borderRadius: 12, padding: 12, alignItems: 'center' },
+  metaLabel: { fontSize: 11, marginBottom: 4 },
+  metaValue: { fontSize: 17, fontWeight: '700' },
+  noteText: { fontSize: 15, lineHeight: 24 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: '#8E8EA0', fontSize: 15 },
+  emptyText: { fontSize: 15 },
   actionRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.03)' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8 },
   actionBtnDisabled: { opacity: 0.5 },
-  actionText: { color: '#4A9EFF', fontSize: 13, fontWeight: '600' },
-  editInput: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 12, color: '#F0F0F5', fontSize: 15, minHeight: 60, textAlignVertical: 'top' },
-  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(74,158,255,0.12)', borderWidth: 1, borderColor: 'rgba(74,158,255,0.3)' },
-  retryButtonText: { color: '#4A9EFF', fontSize: 14, fontWeight: '600' },
+  actionText: { fontSize: 13, fontWeight: '600' },
+  editInput: { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 15, minHeight: 60, textAlignVertical: 'top' },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  retryButtonText: { fontSize: 14, fontWeight: '600' },
   backButton: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10 },
-  backButtonText: { color: '#8E8EA0', fontSize: 14 },
+  backButtonText: { fontSize: 14 },
 });

@@ -1,5 +1,6 @@
 import { Pressable, Text, StyleSheet, type ViewStyle } from 'react-native';
-import { colors, borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 type Props = {
   title: string;
@@ -9,26 +10,53 @@ type Props = {
   style?: ViewStyle;
 };
 
-export function CosmicButton({ title, onPress, variant = 'primary', disabled = false, style }: Props) {
+export function CosmicButton({
+  title,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+  style,
+}: Props) {
+  const { colors, isDark } = useTheme();
+
+  const variantStyles: Record<string, ViewStyle> = {
+    primary: {
+      backgroundColor: colors.accent.blue,
+    },
+    secondary: {
+      backgroundColor: isDark ? colors.surface.card : colors.background.secondary,
+      borderWidth: 1,
+      borderColor: colors.surface.cardBorder,
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+    },
+  };
+
+  const textColor =
+    variant === 'ghost'
+      ? colors.accent.blue
+      : variant === 'primary'
+        ? '#FFFFFF'
+        : colors.text.primary;
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
-        variant === 'primary' && styles.primary,
-        variant === 'secondary' && styles.secondary,
-        variant === 'ghost' && styles.ghost,
+        variantStyles[variant],
         pressed && styles.pressed,
-        disabled && styles.disabled,
+        disabled && { backgroundColor: colors.surface.card, opacity: 0.5 },
         style,
       ]}
     >
       <Text
         style={[
           styles.text,
-          variant === 'ghost' && styles.ghostText,
-          disabled && styles.disabledText,
+          { color: textColor },
+          disabled && { color: colors.text.tertiary },
         ]}
       >
         {title}
@@ -45,34 +73,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primary: {
-    backgroundColor: colors.accent.blue,
-  },
-  secondary: {
-    backgroundColor: colors.surface.glass,
-    borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
   pressed: {
     opacity: 0.8,
     transform: [{ scale: 0.98 }],
   },
-  disabled: {
-    backgroundColor: colors.surface.glass,
-    opacity: 0.5,
-  },
   text: {
-    color: colors.text.primary,
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
-  },
-  ghostText: {
-    color: colors.accent.blue,
-  },
-  disabledText: {
-    color: colors.text.tertiary,
   },
 });

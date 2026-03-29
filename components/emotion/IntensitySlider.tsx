@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize } from '@/theme/tokens';
 import { MIN_INTENSITY, MAX_INTENSITY } from '@/lib/constants';
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
 };
 
 export function IntensitySlider({ value, onChange }: Props) {
+  const { colors } = useTheme();
+
   const levels = Array.from(
     { length: MAX_INTENSITY - MIN_INTENSITY + 1 },
     (_, i) => i + MIN_INTENSITY
@@ -27,6 +30,7 @@ export function IntensitySlider({ value, onChange }: Props) {
               onPress={() => onChange(level)}
               style={[
                 styles.segment,
+                { backgroundColor: colors.surface.card },
                 isActive && { backgroundColor: levelColor },
                 isCurrent && { borderColor: levelColor, borderWidth: 2 },
               ]}
@@ -34,6 +38,7 @@ export function IntensitySlider({ value, onChange }: Props) {
               <Text
                 style={[
                   styles.segmentText,
+                  { color: colors.text.tertiary },
                   isActive && { color: colors.text.inverse, fontWeight: '700' },
                 ]}
               >
@@ -44,8 +49,8 @@ export function IntensitySlider({ value, onChange }: Props) {
         })}
       </View>
       <View style={styles.labels}>
-        <Text style={styles.labelText}>낮음</Text>
-        <Text style={styles.labelText}>높음</Text>
+        <Text style={[styles.labelText, { color: colors.text.tertiary }]}>낮음</Text>
+        <Text style={[styles.labelText, { color: colors.text.tertiary }]}>높음</Text>
       </View>
     </View>
   );
@@ -64,14 +69,12 @@ const styles = StyleSheet.create({
     height: 44,
     minWidth: 44,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface.glass,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
   },
   segmentText: {
-    color: colors.text.tertiary,
     fontSize: fontSize.md,
     fontWeight: '500',
   },
@@ -80,7 +83,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   labelText: {
-    color: colors.text.tertiary,
     fontSize: fontSize.xs,
   },
 });

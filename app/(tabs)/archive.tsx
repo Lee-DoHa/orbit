@@ -8,27 +8,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useEntries, useUserProfile } from '@/hooks/useApi';
 import { canUseFeature } from '@/lib/subscription';
 import { CONTEXTS } from '@/lib/constants';
-
-const EMOTION_COLORS: Record<string, string> = {
-  긴장: '#FFB84D',
-  불안: '#FF6B6B',
-  피로: '#7B8794',
-  안정: '#5CE0D8',
-  설렘: '#FF8FAB',
-  무기력: '#6B7280',
-  집중: '#4A9EFF',
-  만족: '#7FE5A0',
-  외로움: '#A78BFA',
-  혼란: '#F59E0B',
-};
-
-const INTENSITY_COLORS: Record<number, string> = {
-  1: '#5CE0D8',
-  2: '#7FE5A0',
-  3: '#FFD166',
-  4: '#FF9F43',
-  5: '#FF6B6B',
-};
+import { useTheme } from '@/theme/ThemeContext';
 
 type EntryItem = {
   id: string;
@@ -43,6 +23,8 @@ type EntryItem = {
 };
 
 function IntensityDots({ value }: { value: number }) {
+  const { colors } = useTheme();
+  const intensityColor = colors.intensity[value as keyof typeof colors.intensity] || colors.status.warning;
   return (
     <View style={entryStyles.dots}>
       {[1, 2, 3, 4, 5].map((i) => (
@@ -50,9 +32,8 @@ function IntensityDots({ value }: { value: number }) {
           key={i}
           style={[
             entryStyles.dot,
-            i <= value && {
-              backgroundColor: INTENSITY_COLORS[value] || '#FFD166',
-            },
+            { backgroundColor: colors.surface.cardHover },
+            i <= value && { backgroundColor: intensityColor },
           ]}
         />
       ))}
@@ -61,48 +42,52 @@ function IntensityDots({ value }: { value: number }) {
 }
 
 function EntryCard({ item, onPress }: { item: EntryItem; onPress: () => void }) {
+  const { colors } = useTheme();
   return (
-    <Pressable style={entryStyles.card} onPress={onPress}>
+    <Pressable style={[entryStyles.card, { backgroundColor: colors.surface.card }]} onPress={onPress}>
       <View style={entryStyles.dateCol}>
-        <Text style={entryStyles.dateText}>{item.date}</Text>
-        <Text style={entryStyles.dayText}>{item.dayOfWeek}</Text>
+        <Text style={[entryStyles.dateText, { color: colors.text.primary }]}>{item.date}</Text>
+        <Text style={[entryStyles.dayText, { color: colors.text.secondary }]}>{item.dayOfWeek}</Text>
       </View>
       <View style={entryStyles.contentCol}>
         <View style={entryStyles.emotionRow}>
-          {item.emotions.map((e) => (
-            <View
-              key={e}
-              style={[
-                entryStyles.emotionBadge,
-                { backgroundColor: (EMOTION_COLORS[e] || '#8E8EA0') + '20' },
-              ]}
-            >
+          {item.emotions.map((e) => {
+            const emotionColor = colors.emotion[e as keyof typeof colors.emotion] || colors.text.secondary;
+            return (
               <View
+                key={e}
                 style={[
-                  entryStyles.emotionDot,
-                  { backgroundColor: EMOTION_COLORS[e] || '#8E8EA0' },
-                ]}
-              />
-              <Text
-                style={[
-                  entryStyles.emotionText,
-                  { color: EMOTION_COLORS[e] || '#8E8EA0' },
+                  entryStyles.emotionBadge,
+                  { backgroundColor: emotionColor + '20' },
                 ]}
               >
-                {e}
-              </Text>
-            </View>
-          ))}
+                <View
+                  style={[
+                    entryStyles.emotionDot,
+                    { backgroundColor: emotionColor },
+                  ]}
+                />
+                <Text
+                  style={[
+                    entryStyles.emotionText,
+                    { color: emotionColor },
+                  ]}
+                >
+                  {e}
+                </Text>
+              </View>
+            );
+          })}
           <IntensityDots value={item.intensity} />
         </View>
-        <Text style={entryStyles.contextTag}>{item.context}</Text>
+        <Text style={[entryStyles.contextTag, { color: colors.text.secondary }]}>{item.context}</Text>
         {item.note && (
-          <Text style={entryStyles.note} numberOfLines={1}>
+          <Text style={[entryStyles.note, { color: colors.text.tertiary }]} numberOfLines={1}>
             {item.note}
           </Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={16} color="#5A5A6E" />
+      <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
     </Pressable>
   );
 }
@@ -112,6 +97,7 @@ const FILTER_OPTIONS = ['전체', '긴장', '불안', '안정', '피로', '집�
 export default function ArchiveScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
   const [filter, setFilter] = useState('전체');
   const [searchText, setSearchText] = useState('');
   const [contextFilter, setContextFilter] = useState<string | null>(null);
@@ -182,9 +168,9 @@ export default function ArchiveScreen() {
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }, filter === f && { backgroundColor: colors.accent.blueSubtle, borderColor: colors.accent.blue }]}
             >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
+              <Text style={[styles.filterText, { color: colors.text.secondary }, filter === f && { color: colors.accent.blue, fontWeight: '600' }]}>
                 {f}
               </Text>
             </Pressable>
@@ -192,27 +178,27 @@ export default function ArchiveScreen() {
         </ScrollView>
 
         {isPro ? (
-          <View style={styles.searchContainer}>
-            <Ionicons name="search-outline" size={18} color="#8E8EA0" />
+          <View style={[styles.searchContainer, { backgroundColor: colors.surface.card }]}>
+            <Ionicons name="search-outline" size={18} color={colors.text.secondary} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text.primary }]}
               placeholder="기록 검색..."
-              placeholderTextColor="#5A5A6E"
+              placeholderTextColor={colors.text.tertiary}
               value={searchText}
               onChangeText={handleSearchChange}
             />
             {searchText.length > 0 && (
               <Pressable onPress={() => { setSearchText(''); setDebouncedSearch(''); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }}>
-                <Ionicons name="close-circle" size={18} color="#5A5A6E" />
+                <Ionicons name="close-circle" size={18} color={colors.text.tertiary} />
               </Pressable>
             )}
           </View>
         ) : (
-          <Pressable style={styles.proSearchBanner} onPress={() => router.push('/subscription' as any)}>
-            <Ionicons name="search-outline" size={16} color="#4A9EFF" />
-            <Text style={styles.proSearchText}>검색 및 고급 필터</Text>
-            <View style={styles.proBadge}>
-              <Text style={styles.proBadgeText}>PRO</Text>
+          <Pressable style={[styles.proSearchBanner, { backgroundColor: colors.accent.blueSubtle }]} onPress={() => router.push('/subscription' as any)}>
+            <Ionicons name="search-outline" size={16} color={colors.accent.blue} />
+            <Text style={[styles.proSearchText, { color: colors.accent.blue }]}>검색 및 고급 필터</Text>
+            <View style={[styles.proBadge, { backgroundColor: `${colors.accent.blue}33` }]}>
+              <Text style={[styles.proBadgeText, { color: colors.accent.blue }]}>PRO</Text>
             </View>
           </Pressable>
         )}
@@ -221,47 +207,47 @@ export default function ArchiveScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.contextFilterScroll}>
             <Pressable
               onPress={() => setContextFilter(null)}
-              style={[styles.filterChip, !contextFilter && styles.filterChipActive]}
+              style={[styles.filterChip, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }, !contextFilter && { backgroundColor: colors.accent.blueSubtle, borderColor: colors.accent.blue }]}
             >
-              <Text style={[styles.filterText, !contextFilter && styles.filterTextActive]}>전체 상황</Text>
+              <Text style={[styles.filterText, { color: colors.text.secondary }, !contextFilter && { color: colors.accent.blue, fontWeight: '600' }]}>전체 상황</Text>
             </Pressable>
             {CONTEXTS.map(c => (
               <Pressable
                 key={c.id}
                 onPress={() => setContextFilter(c.name === contextFilter ? null : c.name)}
-                style={[styles.filterChip, contextFilter === c.name && styles.filterChipActive]}
+                style={[styles.filterChip, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }, contextFilter === c.name && { backgroundColor: colors.accent.blueSubtle, borderColor: colors.accent.blue }]}
               >
-                <Text style={[styles.filterText, contextFilter === c.name && styles.filterTextActive]}>{c.name}</Text>
+                <Text style={[styles.filterText, { color: colors.text.secondary }, contextFilter === c.name && { color: colors.accent.blue, fontWeight: '600' }]}>{c.name}</Text>
               </Pressable>
             ))}
           </ScrollView>
         ) : (
           <Pressable style={styles.contextHintBanner} onPress={() => router.push('/subscription' as any)}>
-            <Ionicons name="filter-outline" size={14} color="#8E8EA0" />
-            <Text style={styles.contextHintText}>Pro 플랜에서 상황별 필터를 사용할 수 있어요</Text>
+            <Ionicons name="filter-outline" size={14} color={colors.text.secondary} />
+            <Text style={[styles.contextHintText, { color: colors.text.secondary }]}>Pro 플랜에서 상황별 필터를 사용할 수 있어요</Text>
           </Pressable>
         )}
 
         {isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator size="large" color="#4A9EFF" />
+            <ActivityIndicator size="large" color={colors.accent.blue} />
           </View>
         ) : isError ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>📋</Text>
-            <Text style={styles.emptyTitle}>기록을 불러올 수 없어요</Text>
-            <Text style={styles.emptySubtitle}>네트워크 연결을 확인해주세요</Text>
-            <Pressable style={styles.retryButton} onPress={() => refetch()}>
-              <Ionicons name="refresh-outline" size={18} color="#4A9EFF" />
-              <Text style={styles.retryButtonText}>다시 시도</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>기록을 불러올 수 없어요</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.text.secondary }]}>네트워크 연결을 확인해주세요</Text>
+            <Pressable style={[styles.retryButton, { backgroundColor: colors.accent.blueSubtle, borderColor: `${colors.accent.blue}4D` }]} onPress={() => refetch()}>
+              <Ionicons name="refresh-outline" size={18} color={colors.accent.blue} />
+              <Text style={[styles.retryButtonText, { color: colors.accent.blue }]}>다시 시도</Text>
             </Pressable>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🌙</Text>
-            <Text style={styles.emptyTitle}>아직 기록이 없어요</Text>
-            <Text style={styles.emptySubtitle}>오늘 탭에서 첫 감정을 기록해보세요</Text>
-            <Pressable style={styles.emptyActionButton} onPress={() => router.push('/(tabs)')}>
+            <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>아직 기록이 없어요</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.text.secondary }]}>오늘 탭에서 첫 감정을 기록해보세요</Text>
+            <Pressable style={[styles.emptyActionButton, { backgroundColor: colors.accent.blue }]} onPress={() => router.push('/(tabs)')}>
               <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
               <Text style={styles.emptyActionButtonText}>감정 기록하기</Text>
             </Pressable>
@@ -281,8 +267,8 @@ export default function ArchiveScreen() {
             ItemSeparatorComponent={() => <View style={styles.separator} />}
             ListFooterComponent={
               !isPro && entries.length > filtered.length ? (
-                <Pressable style={styles.archiveBanner} onPress={() => router.push('/subscription' as any)}>
-                  <Text style={styles.archiveBannerText}>Pro로 업그레이드하면 전체 기록을 볼 수 있어요</Text>
+                <Pressable style={[styles.archiveBanner, { backgroundColor: colors.accent.blueSubtle }]} onPress={() => router.push('/subscription' as any)}>
+                  <Text style={[styles.archiveBannerText, { color: colors.accent.blue }]}>Pro로 업그레이드하면 전체 기록을 볼 수 있어요</Text>
                 </Pressable>
               ) : null
             }
@@ -298,13 +284,12 @@ const entryStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 16,
     gap: 12,
   },
   dateCol: { alignItems: 'center', width: 52 },
-  dateText: { color: '#F0F0F5', fontSize: 13, fontWeight: '600' },
-  dayText: { color: '#8E8EA0', fontSize: 11, marginTop: 2 },
+  dateText: { fontSize: 13, fontWeight: '600' },
+  dayText: { fontSize: 11, marginTop: 2 },
   contentCol: { flex: 1, gap: 6 },
   emotionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   emotionBadge: {
@@ -322,10 +307,9 @@ const entryStyles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  contextTag: { color: '#8E8EA0', fontSize: 11 },
-  note: { color: '#5A5A6E', fontSize: 12 },
+  contextTag: { fontSize: 11 },
+  note: { fontSize: 12 },
 });
 
 const styles = StyleSheet.create({
@@ -337,36 +321,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
-  filterChipActive: {
-    backgroundColor: 'rgba(74,158,255,0.15)',
-    borderColor: '#4A9EFF',
-  },
-  filterText: { color: '#8E8EA0', fontSize: 13 },
-  filterTextActive: { color: '#4A9EFF', fontWeight: '600' },
+  filterText: { fontSize: 13 },
   list: { paddingBottom: 100 },
   separator: { height: 8 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { color: '#F0F0F5', fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  emptySubtitle: { color: '#8E8EA0', fontSize: 14, textAlign: 'center' },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, gap: 8 },
-  searchInput: { flex: 1, color: '#F0F0F5', fontSize: 14 },
-  proSearchBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(74,158,255,0.08)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, gap: 8 },
-  proSearchText: { flex: 1, color: '#4A9EFF', fontSize: 13 },
-  proBadge: { backgroundColor: 'rgba(74,158,255,0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  proBadgeText: { color: '#4A9EFF', fontSize: 10, fontWeight: '700' },
+  emptyTitle: { fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, textAlign: 'center' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, gap: 8 },
+  searchInput: { flex: 1, fontSize: 14 },
+  proSearchBanner: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, gap: 8 },
+  proSearchText: { flex: 1, fontSize: 13 },
+  proBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  proBadgeText: { fontSize: 10, fontWeight: '700' },
   contextFilterScroll: { maxHeight: 44, marginBottom: 12 },
-  archiveBanner: { padding: 16, backgroundColor: 'rgba(74,158,255,0.08)', borderRadius: 12, marginTop: 12, alignItems: 'center' },
-  archiveBannerText: { color: '#4A9EFF', fontSize: 13 },
-  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(74,158,255,0.12)', borderWidth: 1, borderColor: 'rgba(74,158,255,0.3)' },
-  retryButtonText: { color: '#4A9EFF', fontSize: 14, fontWeight: '600' },
-  emptyActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, backgroundColor: '#4A9EFF' },
+  archiveBanner: { padding: 16, borderRadius: 12, marginTop: 12, alignItems: 'center' },
+  archiveBannerText: { fontSize: 13 },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  retryButtonText: { fontSize: 14, fontWeight: '600' },
+  emptyActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   emptyActionButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   contextHintBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
-  contextHintText: { color: '#8E8EA0', fontSize: 12 },
+  contextHintText: { fontSize: 12 },
 });

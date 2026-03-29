@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { useEffect, useRef } from 'react';
-import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize } from '@/theme/tokens';
 
 export function MirrorLoading() {
+  const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0.3)).current;
   const scale = useRef(new Animated.Value(0.95)).current;
 
@@ -25,19 +27,36 @@ export function MirrorLoading() {
   }, []);
 
   return (
-    <Animated.View style={[styles.container, { opacity, transform: [{ scale }] }]}>
-      <View style={styles.glowDot} />
-      <Text style={styles.text}>감정을 구조화하고 있어요...</Text>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.surface.card,
+          borderColor: colors.accent.blueSubtle,
+        },
+        { opacity, transform: [{ scale }] },
+      ]}
+    >
+      <View
+        style={[
+          styles.glowDot,
+          {
+            backgroundColor: colors.accent.blue,
+            shadowColor: colors.accent.blue,
+          },
+        ]}
+      />
+      <Text style={[styles.text, { color: colors.text.secondary }]}>
+        감정을 구조화하고 있어요...
+      </Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface.glass,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.accent.blueGlow,
     padding: spacing.xl,
     alignItems: 'center',
     gap: 16,
@@ -46,14 +65,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.accent.blue,
-    shadowColor: colors.accent.blue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 16,
   },
   text: {
-    color: colors.text.secondary,
     fontSize: fontSize.sm,
   },
 });

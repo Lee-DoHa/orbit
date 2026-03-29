@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { checkSession, getAccessToken } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
 import { initRevenueCat } from '@/lib/revenueCat';
+import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,25 +16,25 @@ const queryClient = new QueryClient({
   },
 });
 
-export default function RootLayout() {
+function RootNavigator() {
   const [ready, setReady] = useState(false);
   const setUser = useUserStore((s) => s.setUser);
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     (async () => {
       try {
         const hasSession = await checkSession();
         if (hasSession) {
-          // Restore session - parse token to get user info
           const token = await getAccessToken();
-          // Decode JWT payload (base64url → JSON)
           const base64 = token.split('.')[1];
           const base64Fixed = base64.replace(/-/g, '+').replace(/_/g, '/');
           const decoded = decodeURIComponent(
-            atob(base64Fixed).split('').map(c =>
-              '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-            ).join('')
+            atob(base64Fixed)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
           );
           const payload = JSON.parse(decoded);
           setUser({
@@ -41,7 +42,6 @@ export default function RootLayout() {
             email: payload.email,
             displayName: payload.email?.split('@')[0] || '',
           });
-          // Initialize RevenueCat after auth
           initRevenueCat(payload.sub).catch(() => {});
         }
       } catch {
@@ -61,12 +61,12 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <StatusBar style="light" />
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#0A0E1A' },
+          contentStyle: { backgroundColor: colors.background.primary },
           animation: 'fade',
         }}
       >
@@ -76,8 +76,8 @@ export default function RootLayout() {
           name="entry/[id]"
           options={{
             headerShown: true,
-            headerStyle: { backgroundColor: '#0A0E1A' },
-            headerTintColor: '#F0F0F5',
+            headerStyle: { backgroundColor: colors.background.primary },
+            headerTintColor: colors.text.primary,
             headerTitle: '',
             presentation: 'card',
           }}
@@ -86,8 +86,8 @@ export default function RootLayout() {
           name="subscription"
           options={{
             headerShown: true,
-            headerStyle: { backgroundColor: '#0A0E1A' },
-            headerTintColor: '#F0F0F5',
+            headerStyle: { backgroundColor: colors.background.primary },
+            headerTintColor: colors.text.primary,
             headerTitle: '',
             presentation: 'modal',
           }}
@@ -96,13 +96,23 @@ export default function RootLayout() {
           name="privacy"
           options={{
             headerShown: true,
-            headerStyle: { backgroundColor: '#0A0E1A' },
-            headerTintColor: '#F0F0F5',
+            headerStyle: { backgroundColor: colors.background.primary },
+            headerTintColor: colors.text.primary,
             headerTitle: '개인정보 처리방침',
             presentation: 'card',
           }}
         />
       </Stack>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -7,7 +7,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { CosmicButton } from '@/components/ui/CosmicButton';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
 import { PLANS } from '@/lib/subscription';
 import { useUserProfile } from '@/hooks/useApi';
 import { api } from '@/lib/api';
@@ -16,9 +17,10 @@ import { purchasePackage, restorePurchases, isRevenueCatConfigured } from '@/lib
 type PlanType = 'monthly' | 'annual';
 
 function FeatureRow({ title, free, pro }: { title: string; free: boolean; pro: boolean }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.featureRow}>
-      <Text style={styles.featureText}>{title}</Text>
+      <Text style={[styles.featureText, { color: colors.text.primary }]}>{title}</Text>
       <View style={styles.featureChecks}>
         <View style={styles.featureCheckCell}>
           {free ? (
@@ -42,6 +44,7 @@ function FeatureRow({ title, free, pro }: { title: string; free: boolean; pro: b
 export default function SubscriptionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('annual');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -55,7 +58,6 @@ export default function SubscriptionScreen() {
     setLoading(true);
     try {
       if (Platform.OS === 'web') {
-        // Web: Stripe Checkout
         const { url } = await api.stripe.createCheckoutSession(selectedPlan);
         if (typeof window !== 'undefined') {
           window.location.href = url;
@@ -63,14 +65,12 @@ export default function SubscriptionScreen() {
           await Linking.openURL(url);
         }
       } else if (isRevenueCatConfigured()) {
-        // Native: RevenueCat IAP
         const success = await purchasePackage(selectedPlan);
         if (success) {
           queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
           Alert.alert('구독 완료', 'Pro 플랜으로 전환되었습니다!');
         }
       } else {
-        // Fallback: Demo toggle (dev mode or no payment configured)
         await api.users.updateSubscription('pro');
         queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
         Alert.alert('구독 완료', 'Pro 플랜으로 전환되었습니다!');
@@ -111,7 +111,6 @@ export default function SubscriptionScreen() {
           onPress: async () => {
             try {
               if (Platform.OS === 'web') {
-                // Web: Stripe portal
                 const { url } = await api.stripe.getPortalSession();
                 if (typeof window !== 'undefined') {
                   window.location.href = url;
@@ -119,13 +118,10 @@ export default function SubscriptionScreen() {
                   await Linking.openURL(url);
                 }
               } else if (Platform.OS === 'ios') {
-                // iOS: redirect to subscription management
                 Linking.openURL('https://apps.apple.com/account/subscriptions');
               } else {
-                // Android: redirect to Play Store subscriptions
                 Linking.openURL('https://play.google.com/store/account/subscriptions');
               }
-              // Also do demo toggle for dev
               if (isDev) {
                 await api.users.updateSubscription('free');
                 queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
@@ -149,8 +145,8 @@ export default function SubscriptionScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>ORBIT Pro</Text>
-          <Text style={styles.subtitle}>감정 분석의 깊이를 더하세요</Text>
+          <Text style={[styles.title, { color: colors.accent.blue }]}>ORBIT Pro</Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>감정 분석의 깊이를 더하세요</Text>
         </View>
 
         {/* Already Pro */}
@@ -158,24 +154,27 @@ export default function SubscriptionScreen() {
           <GlassCard style={styles.proActiveCard} variant="highlight">
             <View style={styles.proActiveContent}>
               <Ionicons name="checkmark-circle" size={32} color={colors.accent.cyan} />
-              <Text style={styles.proActiveText}>현재 Pro 플랜 사용 중</Text>
+              <Text style={[styles.proActiveText, { color: colors.accent.cyan }]}>현재 Pro 플랜 사용 중</Text>
             </View>
             <View style={styles.proDetails}>
               <View style={styles.proDetailRow}>
                 <Ionicons name="infinite-outline" size={18} color={colors.text.secondary} />
-                <Text style={styles.proDetailText}>Mirror AI 무제한 분석</Text>
+                <Text style={[styles.proDetailText, { color: colors.text.secondary }]}>Mirror AI 무제한 분석</Text>
               </View>
               <View style={styles.proDetailRow}>
                 <Ionicons name="analytics-outline" size={18} color={colors.text.secondary} />
-                <Text style={styles.proDetailText}>고급 인사이트 및 패턴 분석</Text>
+                <Text style={[styles.proDetailText, { color: colors.text.secondary }]}>고급 인사이트 및 패턴 분석</Text>
               </View>
               <View style={styles.proDetailRow}>
                 <Ionicons name="download-outline" size={18} color={colors.text.secondary} />
-                <Text style={styles.proDetailText}>데이터 내보내기</Text>
+                <Text style={[styles.proDetailText, { color: colors.text.secondary }]}>데이터 내보내기</Text>
               </View>
             </View>
-            <Pressable style={styles.downgradeButton} onPress={handleDowngrade}>
-              <Text style={styles.downgradeText}>Free 플랜으로 전환</Text>
+            <Pressable
+              style={[styles.downgradeButton, { backgroundColor: colors.surface.card }]}
+              onPress={handleDowngrade}
+            >
+              <Text style={[styles.downgradeText, { color: colors.text.tertiary }]}>Free 플랜으로 전환</Text>
             </Pressable>
           </GlassCard>
         ) : (
@@ -183,24 +182,32 @@ export default function SubscriptionScreen() {
             {/* Plan Selection */}
             <View style={styles.planRow}>
               <Pressable
-                style={[styles.planCard, selectedPlan === 'monthly' && styles.planCardSelected]}
+                style={[
+                  styles.planCard,
+                  { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder },
+                  selectedPlan === 'monthly' && { borderColor: colors.accent.blue, backgroundColor: colors.accent.blueSubtle },
+                ]}
                 onPress={() => setSelectedPlan('monthly')}
               >
-                <Text style={styles.planPeriod}>월간</Text>
-                <Text style={styles.planPrice}>{PLANS.monthly.price}</Text>
-                <Text style={styles.planPeriodSub}>/ {PLANS.monthly.period}</Text>
+                <Text style={[styles.planPeriod, { color: colors.text.secondary }]}>월간</Text>
+                <Text style={[styles.planPrice, { color: colors.text.primary }]}>{PLANS.monthly.price}</Text>
+                <Text style={[styles.planPeriodSub, { color: colors.text.tertiary }]}>/ {PLANS.monthly.period}</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.planCard, selectedPlan === 'annual' && styles.planCardSelected]}
+                style={[
+                  styles.planCard,
+                  { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder },
+                  selectedPlan === 'annual' && { borderColor: colors.accent.blue, backgroundColor: colors.accent.blueSubtle },
+                ]}
                 onPress={() => setSelectedPlan('annual')}
               >
-                <View style={styles.savingsBadge}>
-                  <Text style={styles.savingsText}>{PLANS.annual.savings} 절약</Text>
+                <View style={[styles.savingsBadge, { backgroundColor: colors.accent.cyan }]}>
+                  <Text style={[styles.savingsText, { color: colors.text.inverse }]}>{PLANS.annual.savings} 절약</Text>
                 </View>
-                <Text style={styles.planPeriod}>연간</Text>
-                <Text style={styles.planPrice}>{PLANS.annual.price}</Text>
-                <Text style={styles.planPeriodSub}>/ {PLANS.annual.period}</Text>
+                <Text style={[styles.planPeriod, { color: colors.text.secondary }]}>연간</Text>
+                <Text style={[styles.planPrice, { color: colors.text.primary }]}>{PLANS.annual.price}</Text>
+                <Text style={[styles.planPeriodSub, { color: colors.text.tertiary }]}>/ {PLANS.annual.period}</Text>
               </Pressable>
             </View>
 
@@ -221,10 +228,10 @@ export default function SubscriptionScreen() {
                 {restoring ? (
                   <View style={styles.restoreLoadingRow}>
                     <ActivityIndicator size="small" color={colors.text.tertiary} />
-                    <Text style={styles.restoreText}>복원 중...</Text>
+                    <Text style={[styles.restoreText, { color: colors.text.tertiary }]}>복원 중...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.restoreText}>구매 복원</Text>
+                  <Text style={[styles.restoreText, { color: colors.text.tertiary }]}>구매 복원</Text>
                 )}
               </Pressable>
             )}
@@ -233,24 +240,21 @@ export default function SubscriptionScreen() {
 
         {/* Feature Comparison */}
         <View style={styles.comparisonHeader}>
-          <Text style={styles.comparisonTitle}>기능 비교</Text>
+          <Text style={[styles.comparisonTitle, { color: colors.text.primary }]}>기능 비교</Text>
           <View style={styles.comparisonLabels}>
-            <Text style={styles.comparisonLabel}>Free</Text>
-            <Text style={[styles.comparisonLabel, styles.comparisonLabelPro]}>Pro</Text>
+            <Text style={[styles.comparisonLabel, { color: colors.text.tertiary }]}>Free</Text>
+            <Text style={[styles.comparisonLabel, { color: colors.accent.blue }]}>Pro</Text>
           </View>
         </View>
 
         <GlassCard style={styles.featureList}>
-          {/* Free features */}
           <FeatureRow title="감정 기록 무제한" free={true} pro={true} />
           <FeatureRow title="기본 주간 차트" free={true} pro={true} />
           <FeatureRow title="패턴 인식" free={true} pro={true} />
           <FeatureRow title="성장 단계" free={true} pro={true} />
 
-          {/* Divider */}
-          <View style={styles.featureDivider} />
+          <View style={[styles.featureDivider, { backgroundColor: colors.surface.cardBorder }]} />
 
-          {/* Pro features */}
           <FeatureRow title="Mirror AI 무제한" free={false} pro={true} />
           <FeatureRow title="전체 기록 열람" free={false} pro={true} />
           <FeatureRow title="고급 필터/검색" free={false} pro={true} />
@@ -258,10 +262,8 @@ export default function SubscriptionScreen() {
           <FeatureRow title="안정도 변화 추이" free={false} pro={true} />
           <FeatureRow title="월간 회고" free={false} pro={true} />
 
-          {/* AI features divider */}
-          <View style={styles.featureDivider} />
+          <View style={[styles.featureDivider, { backgroundColor: colors.surface.cardBorder }]} />
 
-          {/* AI Pro features */}
           <FeatureRow title="AI 주간 요약" free={false} pro={true} />
           <FeatureRow title="AI 패턴 분석" free={false} pro={true} />
           <FeatureRow title="AI 맞춤 실험" free={false} pro={true} />
@@ -287,13 +289,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
-    color: colors.accent.blue,
     letterSpacing: 4,
     marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: fontSize.md,
-    color: colors.text.secondary,
   },
   proActiveCard: {
     marginBottom: spacing.xl,
@@ -307,7 +307,6 @@ const styles = StyleSheet.create({
   proActiveText: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
-    color: colors.accent.cyan,
   },
   proDetails: {
     marginTop: spacing.md,
@@ -321,19 +320,16 @@ const styles = StyleSheet.create({
   },
   proDetailText: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
   },
   downgradeButton: {
     marginTop: spacing.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
     alignSelf: 'center',
   },
   downgradeText: {
     fontSize: fontSize.sm,
-    color: colors.text.tertiary,
   },
   planRow: {
     flexDirection: 'row',
@@ -342,38 +338,28 @@ const styles = StyleSheet.create({
   },
   planCard: {
     flex: 1,
-    backgroundColor: colors.surface.glass,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     alignItems: 'center',
   },
-  planCardSelected: {
-    borderColor: colors.accent.blue,
-    backgroundColor: colors.accent.blueGlow,
-  },
   planPeriod: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
     fontWeight: fontWeight.medium,
     marginBottom: spacing.xs,
   },
   planPrice: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-    color: colors.text.primary,
   },
   planPeriodSub: {
     fontSize: fontSize.xs,
-    color: colors.text.tertiary,
     marginTop: spacing.xs,
   },
   savingsBadge: {
     position: 'absolute',
     top: -10,
     right: -4,
-    backgroundColor: colors.accent.cyan,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
@@ -381,7 +367,6 @@ const styles = StyleSheet.create({
   savingsText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    color: colors.text.inverse,
   },
   subscribeButton: {
     marginBottom: spacing.md,
@@ -394,7 +379,6 @@ const styles = StyleSheet.create({
   },
   restoreText: {
     fontSize: fontSize.sm,
-    color: colors.text.tertiary,
     textDecorationLine: 'underline',
   },
   restoreButtonDisabled: {
@@ -414,7 +398,6 @@ const styles = StyleSheet.create({
   comparisonTitle: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
-    color: colors.text.primary,
   },
   comparisonLabels: {
     flexDirection: 'row',
@@ -423,12 +406,8 @@ const styles = StyleSheet.create({
   comparisonLabel: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
-    color: colors.text.tertiary,
     width: 36,
     textAlign: 'center',
-  },
-  comparisonLabelPro: {
-    color: colors.accent.blue,
   },
   featureList: {
     padding: spacing.md,
@@ -442,7 +421,6 @@ const styles = StyleSheet.create({
   featureText: {
     flex: 1,
     fontSize: fontSize.sm,
-    color: colors.text.primary,
   },
   featureChecks: {
     flexDirection: 'row',
@@ -454,7 +432,6 @@ const styles = StyleSheet.create({
   },
   featureDivider: {
     height: 1,
-    backgroundColor: colors.surface.glassBorder,
     marginVertical: spacing.sm,
   },
 });

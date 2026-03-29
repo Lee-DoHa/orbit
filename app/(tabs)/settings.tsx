@@ -12,13 +12,22 @@ import { useUserStore } from '@/stores/userStore';
 import { api } from '@/lib/api';
 import { entriesToCSV, downloadCSV } from '@/lib/export';
 import { canUseFeature } from '@/lib/subscription';
-import { colors, borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
+import { useTheme, type ThemeMode } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
 const PERSONA_OPTIONS = [
   { key: 'calm', label: '차분함' },
   { key: 'cheer', label: '따뜻함' },
   { key: 'rational', label: '직접적' },
 ] as const;
+
+const THEME_LABELS: Record<ThemeMode, string> = {
+  dark: '다크',
+  light: '라이트',
+  system: '시스템',
+};
+
+const THEME_CYCLE: ThemeMode[] = ['dark', 'light', 'system'];
 
 type SettingRowProps = {
   icon: string;
@@ -29,14 +38,15 @@ type SettingRowProps = {
 };
 
 function SettingRow({ icon, title, subtitle, right, onPress }: SettingRowProps) {
+  const { colors } = useTheme();
   return (
     <Pressable style={styles.row} onPress={onPress}>
-      <Ionicons name={icon as any} size={22} color="#8E8EA0" />
+      <Ionicons name={icon as any} size={22} color={colors.text.secondary} />
       <View style={styles.rowText}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+        <Text style={[styles.rowTitle, { color: colors.text.primary }]}>{title}</Text>
+        {subtitle && <Text style={[styles.rowSubtitle, { color: colors.text.secondary }]}>{subtitle}</Text>}
       </View>
-      {right ?? <Ionicons name="chevron-forward" size={18} color="#5A5A6E" />}
+      {right ?? <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />}
     </Pressable>
   );
 }
@@ -44,6 +54,7 @@ function SettingRow({ icon, title, subtitle, right, onPress }: SettingRowProps) 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, mode, setTheme } = useTheme();
   const [reminder, setReminder] = useState(true);
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -70,6 +81,12 @@ export default function SettingsScreen() {
       onSuccess: () => Alert.alert('페르소나 변경', `AI 페르소나가 '${next.label}'(으)로 변경되었습니다.\n다음 Mirror 분석부터 적용됩니다.`),
       onError: () => Alert.alert('오류', '페르소나 변경에 실패했습니다.'),
     });
+  }
+
+  function cycleTheme() {
+    const idx = THEME_CYCLE.indexOf(mode);
+    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+    setTheme(next);
   }
 
   function handleEditProfile() {
@@ -178,11 +195,16 @@ export default function SettingsScreen() {
     ]);
   }
 
+  function handleVersionTap() {
+    const version = Constants.expoConfig?.version ?? '1.0.0';
+    Alert.alert('ORBIT', `ORBIT v${version}\n빌드: 2026.03.29\nExpo SDK 52`);
+  }
+
   if (isLoading) {
     return (
       <GradientBackground>
         <View style={[styles.loadingContainer, { paddingTop: insets.top + 16 }]}>
-          <ActivityIndicator size="large" color="#4A9EFF" />
+          <ActivityIndicator size="large" color={colors.accent.blue} />
         </View>
       </GradientBackground>
     );
@@ -201,20 +223,20 @@ export default function SettingsScreen() {
       >
         <SectionHeader title="설정" />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>계정</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text.secondary }]}>계정</Text>
           <SettingRow
             icon="person-outline"
             title="프로필"
             subtitle={displayName}
             onPress={handleEditProfile}
-            right={isMutating ? <ActivityIndicator size="small" color="#4A9EFF" /> : undefined}
+            right={isMutating ? <ActivityIndicator size="small" color={colors.accent.blue} /> : undefined}
           />
           <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} onPress={() => router.push('/subscription')} />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>기록</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text.secondary }]}>기록</Text>
           <SettingRow
             icon="notifications-outline"
             title="기록 리마인드"
@@ -229,7 +251,7 @@ export default function SettingsScreen() {
                     onError: () => { setReminder(!val); Alert.alert('오류', '설정 변경에 실패했습니다.'); },
                   });
                 }}
-                trackColor={{ false: '#333', true: '#4A9EFF' }}
+                trackColor={{ false: colors.text.tertiary, true: colors.accent.blue }}
                 thumbColor="#fff"
               />
             }
@@ -239,42 +261,40 @@ export default function SettingsScreen() {
             title="AI 페르소나"
             subtitle={personaLabel}
             onPress={cyclePersona}
-            right={isMutating ? <ActivityIndicator size="small" color="#4A9EFF" /> : undefined}
+            right={isMutating ? <ActivityIndicator size="small" color={colors.accent.blue} /> : undefined}
           />
           <SettingRow
-            icon="time-outline"
-            title="타임존"
-            subtitle={user?.timezone || 'Asia/Seoul'}
-            onPress={() => {
-              const timezones = ['Asia/Seoul', 'Asia/Tokyo', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin'];
-              Alert.alert('타임존 설정', '사용할 타임존을 선택하세요',
-                timezones.map(tz => ({
-                  text: tz,
-                  onPress: () => updateUser.mutate({ timezone: tz }, {
-                    onSuccess: () => Alert.alert('설정 저장', `타임존이 ${tz}(으)로 변경되었습니다.`),
-                    onError: () => Alert.alert('오류', '타임존 변경에 실패했습니다.'),
-                  }),
-                })).concat([{ text: '취소', style: 'cancel' as any, onPress: undefined as any }])
-              );
-            }}
+            icon="color-palette-outline"
+            title="테마"
+            subtitle={THEME_LABELS[mode]}
+            onPress={cycleTheme}
           />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>데이터</Text>
+        <View style={[styles.section, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text.secondary }]}>데이터</Text>
           <SettingRow icon="download-outline" title="데이터 다운로드" onPress={handleDataExport} />
           <SettingRow icon="trash-outline" title="데이터 삭제" onPress={handleDataDelete} />
           <SettingRow icon="shield-checkmark-outline" title="개인정보 처리방침" onPress={handlePrivacy} />
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>앱 정보</Text>
-          <SettingRow icon="information-circle-outline" title="버전" subtitle={Constants.expoConfig?.version ?? '1.0.0'} right={null} />
+        <View style={[styles.section, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }]}>
+          <Text style={[styles.sectionLabel, { color: colors.text.secondary }]}>앱 정보</Text>
+          <SettingRow
+            icon="information-circle-outline"
+            title="버전"
+            subtitle={Constants.expoConfig?.version ?? '1.0.0'}
+            onPress={handleVersionTap}
+            right={null}
+          />
         </View>
 
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#FF6B6B" />
-          <Text style={styles.logoutText}>로그아웃</Text>
+        <Pressable
+          style={[styles.logoutButton, { backgroundColor: `${colors.status.error}14`, borderColor: `${colors.status.error}26` }]}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color={colors.status.error} />
+          <Text style={[styles.logoutText, { color: colors.status.error }]}>로그아웃</Text>
         </Pressable>
 
         <View style={{ height: 32 }} />
@@ -288,23 +308,23 @@ export default function SettingsScreen() {
         onRequestClose={() => setShowNameModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>프로필 편집</Text>
-            <Text style={styles.modalSubtitle}>이름을 입력하세요</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.background.tertiary, borderColor: colors.surface.cardBorder }]}>
+            <Text style={[styles.modalTitle, { color: colors.text.primary }]}>프로필 편집</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.text.secondary }]}>이름을 입력하세요</Text>
             <TextInput
-              style={styles.modalInput}
+              style={[styles.modalInput, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder, color: colors.text.primary }]}
               value={nameInput}
               onChangeText={setNameInput}
               placeholder="이름"
-              placeholderTextColor="#8E8EA0"
+              placeholderTextColor={colors.text.secondary}
               autoFocus
               maxLength={30}
             />
             <View style={styles.modalButtons}>
-              <Pressable style={styles.modalCancelButton} onPress={() => setShowNameModal(false)}>
-                <Text style={styles.modalCancelText}>취소</Text>
+              <Pressable style={[styles.modalCancelButton, { backgroundColor: colors.surface.card }]} onPress={() => setShowNameModal(false)}>
+                <Text style={[styles.modalCancelText, { color: colors.text.secondary }]}>취소</Text>
               </Pressable>
-              <Pressable style={styles.modalSaveButton} onPress={handleSaveName}>
+              <Pressable style={[styles.modalSaveButton, { backgroundColor: colors.accent.blue }]} onPress={handleSaveName}>
                 <Text style={styles.modalSaveText}>저장</Text>
               </Pressable>
             </View>
@@ -321,13 +341,11 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   section: {
     marginBottom: 24,
-    backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
     overflow: 'hidden',
   },
-  sectionLabel: { color: '#8E8EA0', fontSize: 12, fontWeight: '600', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  sectionLabel: { fontSize: 12, fontWeight: '600', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,21 +354,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowText: { flex: 1 },
-  rowTitle: { color: '#F0F0F5', fontSize: 15 },
-  rowSubtitle: { color: '#8E8EA0', fontSize: 12, marginTop: 2 },
+  rowTitle: { fontSize: 15 },
+  rowSubtitle: { fontSize: 12, marginTop: 2 },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255, 107, 107, 0.08)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.15)',
   },
   logoutText: {
-    color: '#FF6B6B',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -364,30 +379,23 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#1A1A2E',
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
   modalTitle: {
-    color: '#F0F0F5',
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
   },
   modalSubtitle: {
-    color: '#8E8EA0',
     fontSize: 13,
     marginBottom: 16,
   },
   modalInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
     padding: 12,
-    color: '#F0F0F5',
     fontSize: 15,
     marginBottom: 20,
   },
@@ -399,11 +407,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
   },
   modalCancelText: {
-    color: '#8E8EA0',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -411,7 +417,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: '#4A9EFF',
     alignItems: 'center',
   },
   modalSaveText: {

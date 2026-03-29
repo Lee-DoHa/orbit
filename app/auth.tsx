@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { CosmicButton } from '@/components/ui/CosmicButton';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
 import { signIn, signUp, confirmSignUp, forgotPassword, confirmNewPassword, resendConfirmationCode, isConfigured } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
 
@@ -29,6 +30,7 @@ function getKoreanError(err: any): string {
 }
 
 export default function AuthScreen() {
+  const { colors } = useTheme();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,7 +46,6 @@ export default function AuthScreen() {
   const confirmCodeRef = useRef<TextInput>(null);
   const newPasswordRef = useRef<TextInput>(null);
 
-  // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
@@ -157,6 +158,15 @@ export default function AuthScreen() {
     }
   };
 
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: colors.surface.card,
+      borderColor: colors.surface.cardBorder,
+      color: colors.text.primary,
+    },
+  ];
+
   return (
     <GradientBackground>
       <KeyboardAvoidingView
@@ -164,17 +174,17 @@ export default function AuthScreen() {
         style={styles.container}
       >
         <View style={styles.header}>
-          <Text style={styles.logo}>ORBIT</Text>
-          <Text style={styles.subtitle}>감정을 구조화하는 개인 운영 체제</Text>
+          <Text style={[styles.logo, { color: colors.accent.blue }]}>ORBIT</Text>
+          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>감정을 구조화하는 개인 운영 체제</Text>
         </View>
 
         <View style={styles.form}>
           {mode === 'confirm' ? (
             <>
-              <Text style={styles.label}>{email}로 전송된 인증 코드를 입력하세요</Text>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>{email}로 전송된 인증 코드를 입력하세요</Text>
               <TextInput
                 ref={confirmCodeRef}
-                style={styles.input}
+                style={inputStyle}
                 placeholder="인증 코드"
                 placeholderTextColor={colors.text.tertiary}
                 value={confirmCode}
@@ -194,9 +204,9 @@ export default function AuthScreen() {
             </>
           ) : mode === 'forgot' ? (
             <>
-              <Text style={styles.label}>비밀번호를 재설정할 이메일을 입력하세요</Text>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>비밀번호를 재설정할 이메일을 입력하세요</Text>
               <TextInput
-                style={styles.input}
+                style={inputStyle}
                 placeholder="이메일"
                 placeholderTextColor={colors.text.tertiary}
                 value={email}
@@ -216,10 +226,10 @@ export default function AuthScreen() {
             </>
           ) : mode === 'reset' ? (
             <>
-              <Text style={styles.label}>{email}로 전송된 인증 코드와 새 비밀번호를 입력하세요</Text>
+              <Text style={[styles.label, { color: colors.text.secondary }]}>{email}로 전송된 인증 코드와 새 비밀번호를 입력하세요</Text>
               <TextInput
                 ref={confirmCodeRef}
-                style={styles.input}
+                style={inputStyle}
                 placeholder="인증 코드"
                 placeholderTextColor={colors.text.tertiary}
                 value={confirmCode}
@@ -232,7 +242,7 @@ export default function AuthScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   ref={newPasswordRef}
-                  style={[styles.input, styles.passwordInput]}
+                  style={[...inputStyle, styles.passwordInput]}
                   placeholder="새 비밀번호 (8자 이상)"
                   placeholderTextColor={colors.text.tertiary}
                   value={newPassword}
@@ -246,11 +256,7 @@ export default function AuthScreen() {
                   onPress={() => setShowNewPassword(!showNewPassword)}
                   hitSlop={8}
                 >
-                  <Ionicons
-                    name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={22}
-                    color={colors.text.tertiary}
-                  />
+                  <Ionicons name={showNewPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.text.tertiary} />
                 </Pressable>
               </View>
               <CosmicButton title="비밀번호 변경" onPress={handleResetPassword} disabled={loading || !confirmCode || !newPassword} />
@@ -269,7 +275,7 @@ export default function AuthScreen() {
           ) : (
             <>
               <TextInput
-                style={styles.input}
+                style={inputStyle}
                 placeholder="이메일"
                 placeholderTextColor={colors.text.tertiary}
                 value={email}
@@ -282,7 +288,7 @@ export default function AuthScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   ref={passwordRef}
-                  style={[styles.input, styles.passwordInput]}
+                  style={[...inputStyle, styles.passwordInput]}
                   placeholder={mode === 'signup' ? "비밀번호 (8자 이상, 대소문자+숫자)" : "비밀번호 (8자 이상)"}
                   placeholderTextColor={colors.text.tertiary}
                   value={password}
@@ -296,35 +302,19 @@ export default function AuthScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   hitSlop={8}
                 >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={22}
-                    color={colors.text.tertiary}
-                  />
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.text.tertiary} />
                 </Pressable>
               </View>
               {mode === 'login' ? (
                 <>
                   <CosmicButton title="로그인" onPress={handleLogin} disabled={loading} />
-                  <CosmicButton
-                    title="비밀번호를 잊으셨나요?"
-                    variant="ghost"
-                    onPress={() => setMode('forgot')}
-                  />
-                  <CosmicButton
-                    title="계정이 없으신가요? 회원가입"
-                    variant="ghost"
-                    onPress={() => setMode('signup')}
-                  />
+                  <CosmicButton title="비밀번호를 잊으셨나요?" variant="ghost" onPress={() => setMode('forgot')} />
+                  <CosmicButton title="계정이 없으신가요? 회원가입" variant="ghost" onPress={() => setMode('signup')} />
                 </>
               ) : (
                 <>
                   <CosmicButton title="회원가입" onPress={handleSignUp} disabled={loading} />
-                  <CosmicButton
-                    title="이미 계정이 있으신가요? 로그인"
-                    variant="ghost"
-                    onPress={() => setMode('login')}
-                  />
+                  <CosmicButton title="이미 계정이 있으신가요? 로그인" variant="ghost" onPress={() => setMode('login')} />
                 </>
               )}
             </>
@@ -348,30 +338,24 @@ const styles = StyleSheet.create({
   logo: {
     fontSize: fontSize.hero,
     fontWeight: fontWeight.bold,
-    color: colors.accent.blue,
     letterSpacing: 8,
     marginBottom: spacing.sm,
   },
   subtitle: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
   },
   form: {
     gap: spacing.md,
   },
   label: {
     fontSize: fontSize.sm,
-    color: colors.text.secondary,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.surface.glass,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    color: colors.text.primary,
     fontSize: fontSize.md,
   },
   passwordContainer: {

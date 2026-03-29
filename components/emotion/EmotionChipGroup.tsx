@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
-import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize } from '@/theme/tokens';
 import { EMOTIONS, MAX_EMOTIONS, type EmotionId } from '@/lib/constants';
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
 };
 
 export function EmotionChipGroup({ selected, onToggle }: Props) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       {EMOTIONS.map((emotion) => {
@@ -27,6 +30,10 @@ export function EmotionChipGroup({ selected, onToggle }: Props) {
             }}
             style={[
               styles.chip,
+              {
+                backgroundColor: colors.surface.card,
+                borderColor: colors.surface.cardBorder,
+              },
               isSelected && { backgroundColor: emotionColor + '25', borderColor: emotionColor },
               isDisabled && styles.chipDisabled,
             ]}
@@ -40,8 +47,9 @@ export function EmotionChipGroup({ selected, onToggle }: Props) {
             <Text
               style={[
                 styles.label,
+                { color: colors.text.secondary },
                 isSelected && { color: emotionColor },
-                isDisabled && styles.labelDisabled,
+                isDisabled && { color: colors.text.tertiary },
               ]}
             >
               {emotion.name}
@@ -65,9 +73,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surface.glass,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     gap: 6,
     flexShrink: 0,
   },
@@ -83,11 +89,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   label: {
-    color: colors.text.secondary,
     fontSize: fontSize.sm,
     fontWeight: '500',
-  },
-  labelDisabled: {
-    color: colors.text.tertiary,
   },
 });

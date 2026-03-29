@@ -9,6 +9,7 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { ProFeatureCard } from '@/components/ui/ProFeatureCard';
 import { useWeeklyInsights, useUserProfile, useExperiment, useCompleteExperiment, useReflection, useSaveReflection, useSmartExperiment, useMonthlyNarrative } from '@/hooks/useApi';
 import { canUseFeature } from '@/lib/subscription';
+import { useTheme } from '@/theme/ThemeContext';
 
 const STAGES = [
   { name: 'Seed', label: '씨앗', threshold: 0 },
@@ -40,6 +41,7 @@ function getStageDescription(stageIdx: number, stabilityIndex: number) {
 export default function GrowthScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
   const { data: weekly, isLoading } = useWeeklyInsights();
   const { data: user } = useUserProfile();
   const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
@@ -117,30 +119,31 @@ export default function GrowthScreen() {
         <SectionHeader title="감정 성장" subtitle="꾸준한 기록이 변화를 만들어요" />
 
         <GlassCard style={styles.stageCard}>
-          <Text style={styles.stageTitle}>성장 단계</Text>
+          <Text style={[styles.stageTitle, { color: colors.text.primary }]}>성장 단계</Text>
           <View style={styles.stageRow}>
             {STAGES.map((s, i) => (
               <View key={s.name} style={styles.stageItem}>
                 <View
                   style={[
                     styles.stageDot,
-                    i < currentStage && styles.stageDotDone,
-                    i === currentStage && styles.stageDotActive,
+                    { backgroundColor: colors.surface.cardHover, borderColor: colors.surface.cardBorder },
+                    i < currentStage && { backgroundColor: colors.status.success, borderColor: colors.status.success },
+                    i === currentStage && { backgroundColor: colors.accent.blue, borderColor: colors.accent.blue },
                   ]}
                 />
                 {i < STAGES.length - 1 && (
-                  <View style={[styles.stageLine, i < currentStage && styles.stageLineDone]} />
+                  <View style={[styles.stageLine, { backgroundColor: colors.surface.cardHover }, i < currentStage && { backgroundColor: colors.status.success }]} />
                 )}
-                <Text style={[styles.stageLabel, i <= currentStage && styles.stageLabelActive]}>
+                <Text style={[styles.stageLabel, { color: colors.text.tertiary }, i <= currentStage && { color: colors.text.primary }]}>
                   {s.label}
                 </Text>
               </View>
             ))}
           </View>
           {isLoading ? (
-            <ActivityIndicator size="small" color="#4A9EFF" style={{ marginTop: 16 }} />
+            <ActivityIndicator size="small" color={colors.accent.blue} style={{ marginTop: 16 }} />
           ) : (
-            <Text style={styles.stageDesc}>
+            <Text style={[styles.stageDesc, { color: colors.text.secondary }]}>
               {getStageDescription(currentStage, stabilityIndex)}
             </Text>
           )}
@@ -149,57 +152,57 @@ export default function GrowthScreen() {
         <GlassCard style={styles.statsCard}>
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{totalEntryCount}</Text>
-              <Text style={styles.statLabel}>총 기록</Text>
+              <Text style={[styles.statValue, { color: colors.text.primary }]}>{totalEntryCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>총 기록</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{stabilityIndex}</Text>
-              <Text style={styles.statLabel}>안정 지수</Text>
+              <Text style={[styles.statValue, { color: colors.text.primary }]}>{stabilityIndex}</Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>안정 지수</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.divider }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{STAGES[currentStage].label}</Text>
-              <Text style={styles.statLabel}>현재 단계</Text>
+              <Text style={[styles.statValue, { color: colors.text.primary }]}>{STAGES[currentStage].label}</Text>
+              <Text style={[styles.statLabel, { color: colors.text.secondary }]}>현재 단계</Text>
             </View>
           </View>
         </GlassCard>
 
         {/* Regular experiment card */}
         <GlassCard style={styles.experimentCard}>
-          <Text style={styles.expTitle}>이번 주 작은 실험</Text>
-          <Text style={styles.expText}>
+          <Text style={[styles.expTitle, { color: colors.text.primary }]}>이번 주 작은 실험</Text>
+          <Text style={[styles.expText, { color: colors.text.secondary }]}>
             {experiment?.experiment_text || '이번 주 2회, 10분 산책을 시도해보세요.'}
           </Text>
           {experimentDone ? (
-            <View style={styles.expDone}>
-              <Ionicons name="checkmark-circle" size={24} color="#7FE5A0" />
-              <Text style={styles.expDoneText}>
+            <View style={[styles.expDone, { backgroundColor: `${colors.status.success}14` }]}>
+              <Ionicons name="checkmark-circle" size={24} color={colors.status.success} />
+              <Text style={[styles.expDoneText, { color: colors.status.success }]}>
                 이번 주 실험을 {experimentStatus === 'completed' ? '완료' : '건너뛰기'}했어요
               </Text>
             </View>
           ) : (
             <View style={styles.expButtons}>
               <Pressable
-                style={[styles.expBtn, completeExperiment.isPending && { opacity: 0.5 }]}
+                style={[styles.expBtn, { backgroundColor: colors.accent.blue }, completeExperiment.isPending && { opacity: 0.5 }]}
                 onPress={handleExperimentComplete}
                 disabled={completeExperiment.isPending}
               >
                 {completeExperiment.isPending && completeExperiment.variables === 'completed' ? (
-                  <ActivityIndicator size="small" color="#F0F0F5" />
+                  <ActivityIndicator size="small" color={colors.text.primary} />
                 ) : (
-                  <Text style={styles.expBtnText}>완료</Text>
+                  <Text style={[styles.expBtnText, { color: colors.text.primary }]}>완료</Text>
                 )}
               </Pressable>
               <Pressable
-                style={[styles.expBtn, styles.expBtnGhost, completeExperiment.isPending && { opacity: 0.5 }]}
+                style={[styles.expBtnGhost, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder }, completeExperiment.isPending && { opacity: 0.5 }]}
                 onPress={handleExperimentSkip}
                 disabled={completeExperiment.isPending}
               >
                 {completeExperiment.isPending && completeExperiment.variables === 'skipped' ? (
-                  <ActivityIndicator size="small" color="#8E8EA0" />
+                  <ActivityIndicator size="small" color={colors.text.secondary} />
                 ) : (
-                  <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
+                  <Text style={[styles.expBtnText, { color: colors.text.secondary }]}>건너뛰기</Text>
                 )}
               </Pressable>
             </View>
@@ -211,24 +214,24 @@ export default function GrowthScreen() {
           smartExpLoading ? (
             <GlassCard style={styles.aiExpCard}>
               <View style={styles.aiHeader}>
-                <Ionicons name="sparkles" size={18} color="#A78BFA" />
-                <Text style={styles.aiTitle}>AI 맞춤 실험</Text>
+                <Ionicons name="sparkles" size={18} color={colors.accent.violet} />
+                <Text style={[styles.aiTitle, { color: colors.accent.violet }]}>AI 맞춤 실험</Text>
               </View>
               <View style={styles.aiLoadingRow}>
-                <ActivityIndicator size="small" color="#A78BFA" />
-                <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+                <ActivityIndicator size="small" color={colors.accent.violet} />
+                <Text style={[styles.aiLoadingText, { color: colors.text.secondary }]}>AI가 분석 중이에요...</Text>
               </View>
             </GlassCard>
           ) : smartExp ? (
             <GlassCard style={styles.aiExpCard}>
               <View style={styles.aiHeader}>
-                <Ionicons name="sparkles" size={18} color="#A78BFA" />
-                <Text style={styles.aiTitle}>AI 맞춤 실험</Text>
+                <Ionicons name="sparkles" size={18} color={colors.accent.violet} />
+                <Text style={[styles.aiTitle, { color: colors.accent.violet }]}>AI 맞춤 실험</Text>
               </View>
-              <Text style={styles.aiExpText}>{smartExp.experiment}</Text>
+              <Text style={[styles.aiExpText, { color: colors.text.primary }]}>{smartExp.experiment}</Text>
               {smartExp.reasoning && (
-                <View style={styles.aiReasoningBox}>
-                  <Text style={styles.aiReasoningText}>{smartExp.reasoning}</Text>
+                <View style={[styles.aiReasoningBox, { backgroundColor: `${colors.accent.violet}14`, borderLeftColor: colors.accent.violet }]}>
+                  <Text style={[styles.aiReasoningText, { color: colors.text.secondary }]}>{smartExp.reasoning}</Text>
                 </View>
               )}
             </GlassCard>
@@ -244,37 +247,37 @@ export default function GrowthScreen() {
 
         {/* Monthly reflection */}
         <GlassCard>
-          <Text style={styles.reflectTitle}>월간 회고</Text>
-          <Text style={styles.reflectQ}>
+          <Text style={[styles.reflectTitle, { color: colors.text.primary }]}>월간 회고</Text>
+          <Text style={[styles.reflectQ, { color: colors.text.secondary }]}>
             한 달 전과 비교했을 때, 가장 달라진 점은 무엇인가요?
           </Text>
           <TextInput
-            style={styles.reflectInput}
+            style={[styles.reflectInput, { backgroundColor: colors.surface.card, borderColor: colors.surface.cardBorder, color: colors.text.primary }]}
             placeholder="회고를 작성해보세요..."
-            placeholderTextColor="#5A5A6E"
+            placeholderTextColor={colors.text.tertiary}
             value={reflectionText}
             onChangeText={setReflectionText}
             multiline
             maxLength={500}
             editable={!reflectionSaved && !saveReflection.isPending}
           />
-          <Text style={styles.charCount}>{reflectionText.length}/500</Text>
+          <Text style={[styles.charCount, { color: colors.text.tertiary }]}>{reflectionText.length}/500</Text>
           {!reflectionSaved ? (
             <Pressable
-              style={[styles.reflectSaveBtn, (!reflectionText.trim() || saveReflection.isPending) && { opacity: 0.4 }]}
+              style={[styles.reflectSaveBtn, { backgroundColor: colors.accent.blue }, (!reflectionText.trim() || saveReflection.isPending) && { opacity: 0.4 }]}
               onPress={handleSaveReflection}
               disabled={!reflectionText.trim() || saveReflection.isPending}
             >
               {saveReflection.isPending ? (
-                <ActivityIndicator size="small" color="#F0F0F5" />
+                <ActivityIndicator size="small" color={colors.text.primary} />
               ) : (
-                <Text style={styles.reflectSaveBtnText}>저장</Text>
+                <Text style={[styles.reflectSaveBtnText, { color: colors.text.primary }]}>저장</Text>
               )}
             </Pressable>
           ) : (
             <View style={styles.reflectSaved}>
-              <Ionicons name="checkmark-circle" size={16} color="#7FE5A0" />
-              <Text style={styles.reflectSavedText}>저장됨</Text>
+              <Ionicons name="checkmark-circle" size={16} color={colors.status.success} />
+              <Text style={[styles.reflectSavedText, { color: colors.status.success }]}>저장됨</Text>
             </View>
           )}
         </GlassCard>
@@ -284,25 +287,25 @@ export default function GrowthScreen() {
           narrativeLoading ? (
             <GlassCard style={styles.aiNarrativeCard}>
               <View style={styles.aiHeader}>
-                <Ionicons name="book" size={18} color="#A78BFA" />
-                <Text style={styles.aiTitle}>AI 월간 내러티브</Text>
+                <Ionicons name="book" size={18} color={colors.accent.violet} />
+                <Text style={[styles.aiTitle, { color: colors.accent.violet }]}>AI 월간 내러티브</Text>
               </View>
               <View style={styles.aiLoadingRow}>
-                <ActivityIndicator size="small" color="#A78BFA" />
-                <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+                <ActivityIndicator size="small" color={colors.accent.violet} />
+                <Text style={[styles.aiLoadingText, { color: colors.text.secondary }]}>AI가 분석 중이에요...</Text>
               </View>
             </GlassCard>
           ) : monthlyNarrative ? (
             <GlassCard style={styles.aiNarrativeCard}>
               <View style={styles.aiHeader}>
-                <Ionicons name="book" size={18} color="#A78BFA" />
-                <Text style={styles.aiTitle}>AI 월간 내러티브</Text>
+                <Ionicons name="book" size={18} color={colors.accent.violet} />
+                <Text style={[styles.aiTitle, { color: colors.accent.violet }]}>AI 월간 내러티브</Text>
               </View>
-              <Text style={styles.aiNarrativeText}>{monthlyNarrative.narrative}</Text>
+              <Text style={[styles.aiNarrativeText, { color: colors.text.primary }]}>{monthlyNarrative.narrative}</Text>
               {monthlyNarrative.growthArc && (
-                <View style={styles.growthArcBox}>
-                  <Text style={styles.growthArcLabel}>성장 아크</Text>
-                  <Text style={styles.growthArcText}>{monthlyNarrative.growthArc}</Text>
+                <View style={[styles.growthArcBox, { backgroundColor: `${colors.status.success}14` }]}>
+                  <Text style={[styles.growthArcLabel, { color: colors.status.success }]}>성장 아크</Text>
+                  <Text style={[styles.growthArcText, { color: colors.text.secondary }]}>{monthlyNarrative.growthArc}</Text>
                 </View>
               )}
               {monthlyNarrative.emotionalHighlights?.length > 0 && (
@@ -310,15 +313,15 @@ export default function GrowthScreen() {
                   {monthlyNarrative.emotionalHighlights.map((h: string, i: number) => (
                     <View key={i} style={styles.highlightItem}>
                       <Ionicons name="star" size={12} color="#FFD700" />
-                      <Text style={styles.highlightText}>{h}</Text>
+                      <Text style={[styles.highlightText, { color: colors.text.secondary }]}>{h}</Text>
                     </View>
                   ))}
                 </View>
               )}
               {monthlyNarrative.lookAhead && (
-                <View style={styles.lookAheadBox}>
-                  <Text style={styles.lookAheadLabel}>다음 달 전망</Text>
-                  <Text style={styles.lookAheadText}>{monthlyNarrative.lookAhead}</Text>
+                <View style={[styles.lookAheadBox, { backgroundColor: `${colors.accent.violet}14`, borderLeftColor: colors.accent.violet }]}>
+                  <Text style={[styles.lookAheadLabel, { color: colors.accent.violet }]}>다음 달 전망</Text>
+                  <Text style={[styles.lookAheadText, { color: colors.text.secondary }]}>{monthlyNarrative.lookAhead}</Text>
                 </View>
               )}
             </GlassCard>
@@ -342,89 +345,77 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, paddingBottom: 100 },
   stageCard: { marginBottom: 16 },
-  stageTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600', marginBottom: 20 },
+  stageTitle: { fontSize: 15, fontWeight: '600', marginBottom: 20 },
   stageRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   stageItem: { alignItems: 'center', position: 'relative', flex: 1 },
   stageDot: {
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 2,
   },
-  stageDotDone: { backgroundColor: '#7FE5A0', borderColor: '#7FE5A0' },
-  stageDotActive: { backgroundColor: '#4A9EFF', borderColor: '#4A9EFF' },
   stageLine: {
     position: 'absolute', top: 9, left: '60%',
     width: '80%', height: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  stageLineDone: { backgroundColor: '#7FE5A0' },
-  stageLabel: { color: '#5A5A6E', fontSize: 11, marginTop: 8 },
-  stageLabelActive: { color: '#F0F0F5' },
-  stageDesc: { color: '#8E8EA0', fontSize: 13, marginTop: 20, lineHeight: 20 },
+  stageLabel: { fontSize: 11, marginTop: 8 },
+  stageDesc: { fontSize: 13, marginTop: 20, lineHeight: 20 },
   statsCard: { marginBottom: 16 },
   statsRow: { flexDirection: 'row' },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { color: '#F0F0F5', fontSize: 20, fontWeight: '700', marginBottom: 4 },
-  statLabel: { color: '#8E8EA0', fontSize: 11 },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginHorizontal: 8 },
+  statValue: { fontSize: 20, fontWeight: '700', marginBottom: 4 },
+  statLabel: { fontSize: 11 },
+  statDivider: { width: 1, marginHorizontal: 8 },
   experimentCard: { marginBottom: 16 },
-  expTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600', marginBottom: 12 },
-  expText: { color: '#8E8EA0', fontSize: 14, lineHeight: 22, marginBottom: 16 },
+  expTitle: { fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  expText: { fontSize: 14, lineHeight: 22, marginBottom: 16 },
   expButtons: { flexDirection: 'row', gap: 12 },
   expBtn: {
     flex: 1, paddingVertical: 12, borderRadius: 12,
-    backgroundColor: '#4A9EFF', alignItems: 'center',
+    alignItems: 'center',
   },
-  expBtnText: { color: '#F0F0F5', fontSize: 14, fontWeight: '600' },
-  expBtnGhost: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  expBtnGhostText: { color: '#8E8EA0' },
-  expDone: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: 'rgba(127,229,160,0.08)', borderRadius: 12 },
-  expDoneText: { color: '#7FE5A0', fontSize: 14 },
-  reflectTitle: { color: '#F0F0F5', fontSize: 15, fontWeight: '600', marginBottom: 12 },
-  reflectQ: { color: '#8E8EA0', fontSize: 14, lineHeight: 22 },
-  reflectInput: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 12, color: '#F0F0F5', fontSize: 14, minHeight: 80, textAlignVertical: 'top', marginTop: 12, lineHeight: 22 },
-  reflectSaveBtn: { marginTop: 12, backgroundColor: '#4A9EFF', paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
-  reflectSaveBtnText: { color: '#F0F0F5', fontSize: 14, fontWeight: '600' },
+  expBtnText: { fontSize: 14, fontWeight: '600' },
+  expBtnGhost: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
+  expDone: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 12 },
+  expDoneText: { fontSize: 14 },
+  reflectTitle: { fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  reflectQ: { fontSize: 14, lineHeight: 22 },
+  reflectInput: { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 14, minHeight: 80, textAlignVertical: 'top', marginTop: 12, lineHeight: 22 },
+  reflectSaveBtn: { marginTop: 12, paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  reflectSaveBtnText: { fontSize: 14, fontWeight: '600' },
   reflectSaved: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
-  reflectSavedText: { color: '#7FE5A0', fontSize: 13 },
+  reflectSavedText: { fontSize: 13 },
   // AI card styles
   proCard: { marginBottom: 16, marginTop: 0 },
   aiExpCard: { marginBottom: 16 },
   aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  aiTitle: { color: '#A78BFA', fontSize: 15, fontWeight: '600' },
-  aiExpText: { color: '#F0F0F5', fontSize: 14, lineHeight: 22, marginBottom: 8 },
+  aiTitle: { fontSize: 15, fontWeight: '600' },
+  aiExpText: { fontSize: 14, lineHeight: 22, marginBottom: 8 },
   aiReasoningBox: {
-    backgroundColor: 'rgba(167, 139, 250, 0.08)',
     borderRadius: 8,
     padding: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#A78BFA',
   },
-  aiReasoningText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
+  aiReasoningText: { fontSize: 13, lineHeight: 20 },
   // Monthly narrative
   aiNarrativeCard: { marginTop: 16, marginBottom: 16 },
-  aiNarrativeText: { color: '#F0F0F5', fontSize: 14, lineHeight: 22, marginBottom: 12 },
+  aiNarrativeText: { fontSize: 14, lineHeight: 22, marginBottom: 12 },
   growthArcBox: {
-    backgroundColor: 'rgba(127, 229, 160, 0.08)',
     borderRadius: 8,
     padding: 10,
     marginBottom: 12,
   },
-  growthArcLabel: { color: '#7FE5A0', fontSize: 11, fontWeight: '600', marginBottom: 4 },
-  growthArcText: { color: '#C0C0CC', fontSize: 13 },
+  growthArcLabel: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  growthArcText: { fontSize: 13 },
   highlightList: { gap: 6, marginBottom: 12 },
   highlightItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  highlightText: { color: '#C0C0CC', fontSize: 13 },
+  highlightText: { fontSize: 13 },
   lookAheadBox: {
-    backgroundColor: 'rgba(167, 139, 250, 0.08)',
     borderRadius: 8,
     padding: 10,
     borderLeftWidth: 3,
-    borderLeftColor: '#A78BFA',
   },
-  lookAheadLabel: { color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 4 },
-  lookAheadText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
-  charCount: { color: '#5A5A6E', fontSize: 12, textAlign: 'right', marginTop: 6 },
+  lookAheadLabel: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  lookAheadText: { fontSize: 13, lineHeight: 20 },
+  charCount: { fontSize: 12, textAlign: 'right', marginTop: 6 },
   aiLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  aiLoadingText: { color: '#8E8EA0', fontSize: 13 },
+  aiLoadingText: { fontSize: 13 },
 });

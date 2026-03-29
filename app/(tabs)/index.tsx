@@ -27,7 +27,8 @@ import { IntensitySlider } from '@/components/emotion/IntensitySlider';
 import { ContextTagSelector } from '@/components/emotion/ContextTagSelector';
 import { MirrorCard } from '@/components/mirror/MirrorCard';
 import { MirrorLoading } from '@/components/mirror/MirrorLoading';
-import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
 import {
   DEFAULT_INTENSITY,
   MAX_NOTE_LENGTH,
@@ -46,6 +47,7 @@ type MirrorResult = {
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const createEntry = useCreateEntry();
   const mirror = useMirrorAnalysis();
   const { data: mirrorUsage } = useMirrorUsage();
@@ -84,7 +86,6 @@ export default function TodayScreen() {
     setMirrorResult(null);
     setMirrorResponseId(null);
 
-    // Check mirror usage limit BEFORE creating entry
     if (!canUseFeature(subscriptionTier, 'mirror_unlimited')) {
       const used = mirrorUsage?.usedThisWeek ?? 0;
       if (used >= FREE_MIRROR_LIMIT) {
@@ -123,7 +124,6 @@ export default function TodayScreen() {
       setMirrorResult(result);
       if (result.id) setMirrorResponseId(result.id);
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Scroll to top so user sees the MirrorCard result
       setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
     } catch {
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -157,8 +157,8 @@ export default function TodayScreen() {
           {!mirrorResult && (
             <>
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>오늘 느낀 감정</Text>
-                <Text style={styles.sectionHint}>최대 3개까지 선택할 수 있어요</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>오늘 느낀 감정</Text>
+                <Text style={[styles.sectionHint, { color: colors.text.tertiary }]}>최대 3개까지 선택할 수 있어요</Text>
                 <EmotionChipGroup
                   selected={selectedEmotions}
                   onToggle={handleToggleEmotion}
@@ -166,19 +166,26 @@ export default function TodayScreen() {
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>강도</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>강도</Text>
                 <IntensitySlider value={intensity} onChange={setIntensity} />
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>상황</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>상황</Text>
                 <ContextTagSelector selected={context} onSelect={setContext} />
               </View>
 
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>한 줄 기록</Text>
+                <Text style={[styles.sectionTitle, { color: colors.text.primary }]}>한 줄 기록</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={[
+                    styles.textInput,
+                    {
+                      backgroundColor: colors.surface.card,
+                      borderColor: colors.surface.cardBorder,
+                      color: colors.text.primary,
+                    },
+                  ]}
                   placeholder="한 줄 또는 생각을 남겨보세요"
                   placeholderTextColor={colors.text.tertiary}
                   value={note}
@@ -186,7 +193,7 @@ export default function TodayScreen() {
                   maxLength={MAX_NOTE_LENGTH}
                   multiline
                 />
-                <Text style={styles.charCount}>
+                <Text style={[styles.charCount, { color: colors.text.tertiary }]}>
                   {note.length}/{MAX_NOTE_LENGTH}
                 </Text>
               </View>
@@ -207,8 +214,8 @@ export default function TodayScreen() {
             <>
               {selectedNames ? (
                 <GlassCard style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>기록된 감정</Text>
-                  <Text style={styles.summaryValue}>{selectedNames}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.text.secondary }]}>기록된 감정</Text>
+                  <Text style={[styles.summaryValue, { color: colors.text.primary }]}>{selectedNames}</Text>
                 </GlassCard>
               ) : null}
               <MirrorCard
@@ -247,35 +254,29 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingVertical: 24, paddingBottom: 100 },
   section: { marginBottom: 28 },
   sectionTitle: {
-    color: colors.text.primary,
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
     marginBottom: 8,
   },
   sectionHint: {
-    color: colors.text.tertiary,
     fontSize: fontSize.xs,
     marginBottom: 12,
   },
   textInput: {
-    backgroundColor: colors.surface.glass,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     padding: spacing.md,
-    color: colors.text.primary,
     fontSize: fontSize.md,
     minHeight: 80,
     textAlignVertical: 'top',
   },
   charCount: {
-    color: colors.text.tertiary,
     fontSize: fontSize.xs,
     textAlign: 'right',
     marginTop: 4,
   },
   summaryCard: { marginBottom: 16 },
-  summaryLabel: { color: colors.text.secondary, fontSize: fontSize.xs, marginBottom: 4 },
-  summaryValue: { color: colors.text.primary, fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
+  summaryLabel: { fontSize: fontSize.xs, marginBottom: 4 },
+  summaryValue: { fontSize: fontSize.lg, fontWeight: fontWeight.semibold },
   resultActions: { marginTop: 20, gap: 12 },
 });

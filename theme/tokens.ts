@@ -1,28 +1,65 @@
-export const colors = {
+// ---------------------------------------------------------------------------
+// ORBIT Theme Tokens
+// ---------------------------------------------------------------------------
+
+const darkColors = {
   background: {
-    primary: '#0A0E1A',
-    secondary: '#141B2D',
-    tertiary: '#1A2235',
+    primary: '#111318',
+    secondary: '#191D27',
+    tertiary: '#1F2430',
   },
   surface: {
-    glass: 'rgba(255, 255, 255, 0.05)',
-    glassBorder: 'rgba(255, 255, 255, 0.08)',
-    glassHover: 'rgba(255, 255, 255, 0.1)',
-    card: 'rgba(20, 27, 45, 0.8)',
+    card: 'rgba(255, 255, 255, 0.06)',
+    cardBorder: 'rgba(255, 255, 255, 0.09)',
+    cardHover: 'rgba(255, 255, 255, 0.10)',
+    elevated: 'rgba(30, 35, 50, 0.85)',
   },
   accent: {
     blue: '#4A9EFF',
+    blueSubtle: 'rgba(74, 158, 255, 0.12)',
     violet: '#8B7FFF',
     cyan: '#5CE0D8',
-    blueGlow: 'rgba(74, 158, 255, 0.15)',
-    violetGlow: 'rgba(139, 127, 255, 0.15)',
   },
   text: {
-    primary: '#F0F0F5',
-    secondary: '#8E8EA0',
-    tertiary: '#5A5A6E',
-    inverse: '#0A0E1A',
+    primary: '#F5F5F7',
+    secondary: '#9CA3AF',
+    tertiary: '#6B7280',
+    inverse: '#1F2937',
   },
+  divider: 'rgba(255, 255, 255, 0.07)',
+  shadow: 'transparent',
+} as const;
+
+const lightColors = {
+  background: {
+    primary: '#FAFBFC',
+    secondary: '#F3F4F6',
+    tertiary: '#EBEDF0',
+  },
+  surface: {
+    card: '#FFFFFF',
+    cardBorder: '#E5E7EB',
+    cardHover: '#F9FAFB',
+    elevated: '#FFFFFF',
+  },
+  accent: {
+    blue: '#3B82F6',
+    blueSubtle: 'rgba(59, 130, 246, 0.08)',
+    violet: '#7C6BFF',
+    cyan: '#14B8A6',
+  },
+  text: {
+    primary: '#1F2937',
+    secondary: '#6B7280',
+    tertiary: '#9CA3AF',
+    inverse: '#F5F5F7',
+  },
+  divider: '#E5E7EB',
+  shadow: 'rgba(0, 0, 0, 0.06)',
+} as const;
+
+// Shared tokens that don't change between themes
+const sharedColors = {
   emotion: {
     긴장: '#FFB84D',
     불안: '#FF6B6B',
@@ -48,6 +85,16 @@ export const colors = {
     error: '#FF6B6B',
   },
 } as const;
+
+export type ThemeColors = typeof darkColors & typeof sharedColors;
+
+export function getColors(isDark: boolean): ThemeColors {
+  const base = isDark ? darkColors : lightColors;
+  return { ...base, ...sharedColors } as ThemeColors;
+}
+
+// Legacy export for gradual migration — defaults to dark
+export const colors = getColors(true);
 
 export const spacing = {
   xs: 4,

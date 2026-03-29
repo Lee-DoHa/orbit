@@ -1,5 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
+import { borderRadius, spacing, fontSize } from '@/theme/tokens';
 import { CONTEXTS, type ContextId } from '@/lib/constants';
 
 type Props = {
@@ -8,6 +9,8 @@ type Props = {
 };
 
 export function ContextTagSelector({ selected, onSelect }: Props) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       {CONTEXTS.map((ctx) => {
@@ -16,9 +19,25 @@ export function ContextTagSelector({ selected, onSelect }: Props) {
           <Pressable
             key={ctx.id}
             onPress={() => onSelect(ctx.id)}
-            style={[styles.tag, isSelected && styles.tagSelected]}
+            style={[
+              styles.tag,
+              {
+                backgroundColor: colors.surface.card,
+                borderColor: colors.surface.cardBorder,
+              },
+              isSelected && {
+                backgroundColor: colors.accent.violet + '18',
+                borderColor: colors.accent.violet,
+              },
+            ]}
           >
-            <Text style={[styles.label, isSelected && styles.labelSelected]}>
+            <Text
+              style={[
+                styles.label,
+                { color: colors.text.secondary },
+                isSelected && { color: colors.accent.violet },
+              ]}
+            >
               {ctx.name}
             </Text>
           </Pressable>
@@ -38,21 +57,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.surface.glass,
     borderWidth: 1,
-    borderColor: colors.surface.glassBorder,
     flexShrink: 0,
   },
-  tagSelected: {
-    backgroundColor: colors.accent.violetGlow,
-    borderColor: colors.accent.violet,
-  },
   label: {
-    color: colors.text.secondary,
     fontSize: fontSize.sm,
     fontWeight: '500',
-  },
-  labelSelected: {
-    color: colors.accent.violet,
   },
 });
