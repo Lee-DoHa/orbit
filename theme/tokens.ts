@@ -1,88 +1,104 @@
 // ---------------------------------------------------------------------------
-// ORBIT Theme Tokens
+// ORBIT Theme Tokens — Refined Cosmic Journaling
 // ---------------------------------------------------------------------------
 
 const darkColors = {
   background: {
-    primary: '#111318',
-    secondary: '#191D27',
-    tertiary: '#1F2430',
+    primary: '#0C0F1A',
+    secondary: '#111528',
+    tertiary: '#181D33',
   },
   surface: {
-    card: 'rgba(255, 255, 255, 0.06)',
-    cardBorder: 'rgba(255, 255, 255, 0.09)',
-    cardHover: 'rgba(255, 255, 255, 0.10)',
-    elevated: 'rgba(30, 35, 50, 0.85)',
+    card: 'rgba(255, 255, 255, 0.05)',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    cardHover: 'rgba(255, 255, 255, 0.09)',
+    elevated: 'rgba(22, 26, 48, 0.92)',
   },
   accent: {
-    blue: '#4A9EFF',
-    blueSubtle: 'rgba(74, 158, 255, 0.12)',
+    blue: '#6366F1',
+    blueSubtle: 'rgba(99, 102, 241, 0.14)',
     violet: '#8B7FFF',
     cyan: '#5CE0D8',
+    gold: '#E8B951',
+    goldSubtle: 'rgba(232, 185, 81, 0.12)',
+  },
+  glow: {
+    indigo: 'rgba(99, 102, 241, 0.25)',
+    violet: 'rgba(139, 127, 255, 0.20)',
+    gold: 'rgba(232, 185, 81, 0.15)',
+    cyan: 'rgba(92, 224, 216, 0.18)',
   },
   text: {
-    primary: '#F5F5F7',
-    secondary: '#9CA3AF',
-    tertiary: '#6B7280',
-    inverse: '#1F2937',
+    primary: '#EEEEF2',
+    secondary: '#9196AB',
+    tertiary: '#5E6380',
+    inverse: '#1A1A2E',
   },
-  divider: 'rgba(255, 255, 255, 0.07)',
+  divider: 'rgba(255, 255, 255, 0.06)',
   shadow: 'transparent',
 } as const;
 
 const lightColors = {
   background: {
-    primary: '#FAFBFC',
-    secondary: '#F3F4F6',
-    tertiary: '#EBEDF0',
+    primary: '#F8F7F4',
+    secondary: '#F1F0EC',
+    tertiary: '#E9E8E3',
   },
   surface: {
     card: '#FFFFFF',
-    cardBorder: '#E5E7EB',
-    cardHover: '#F9FAFB',
+    cardBorder: 'rgba(26, 26, 46, 0.08)',
+    cardHover: '#FDFCFA',
     elevated: '#FFFFFF',
   },
   accent: {
-    blue: '#3B82F6',
-    blueSubtle: 'rgba(59, 130, 246, 0.08)',
+    blue: '#4F46E5',
+    blueSubtle: 'rgba(79, 70, 229, 0.07)',
     violet: '#7C6BFF',
     cyan: '#14B8A6',
+    gold: '#D4A030',
+    goldSubtle: 'rgba(212, 160, 48, 0.08)',
+  },
+  glow: {
+    indigo: 'rgba(79, 70, 229, 0.10)',
+    violet: 'rgba(124, 107, 255, 0.08)',
+    gold: 'rgba(212, 160, 48, 0.06)',
+    cyan: 'rgba(20, 184, 166, 0.08)',
   },
   text: {
-    primary: '#1F2937',
-    secondary: '#6B7280',
-    tertiary: '#9CA3AF',
-    inverse: '#F5F5F7',
+    primary: '#1A1A2E',
+    secondary: '#5C5C72',
+    tertiary: '#9191A8',
+    inverse: '#EEEEF2',
   },
-  divider: '#E5E7EB',
-  shadow: 'rgba(0, 0, 0, 0.06)',
+  divider: 'rgba(26, 26, 46, 0.08)',
+  shadow: 'rgba(26, 26, 46, 0.08)',
 } as const;
 
 // Shared tokens that don't change between themes
 const sharedColors = {
   emotion: {
-    긴장: '#FFB84D',
-    불안: '#FF6B6B',
-    피로: '#7B8794',
-    안정: '#5CE0D8',
-    설렘: '#FF8FAB',
-    무기력: '#6B7280',
-    집중: '#4A9EFF',
-    만족: '#7FE5A0',
+    긴장: '#F6AD49',
+    불안: '#F06060',
+    피로: '#7E8A98',
+    안정: '#4DD9CF',
+    설렘: '#F48BA6',
+    무기력: '#6E7582',
+    집중: '#5B8DEF',
+    만족: '#6DDC8C',
     외로움: '#A78BFA',
-    혼란: '#F59E0B',
+    혼란: '#EFA020',
   },
   intensity: {
-    1: '#5CE0D8',
-    2: '#7FE5A0',
-    3: '#FFD166',
-    4: '#FF9F43',
-    5: '#FF6B6B',
+    1: '#4DD9CF',
+    2: '#6DDC8C',
+    3: '#F5C842',
+    4: '#F5A142',
+    5: '#F06060',
   },
   status: {
-    success: '#7FE5A0',
-    warning: '#FFD166',
-    error: '#FF6B6B',
+    success: '#6DDC8C',
+    warning: '#F5C842',
+    error: '#F06060',
   },
 } as const;
 
@@ -130,3 +146,74 @@ export const fontWeight = {
   semibold: '600' as const,
   bold: '700' as const,
 };
+
+export const letterSpacing = {
+  tight: -0.4,
+  normal: 0,
+  wide: 0.6,
+  wider: 1.2,
+  widest: 2.0,
+} as const;
+
+export const shadow = {
+  light: {
+    sm: {
+      shadowColor: 'rgba(26, 26, 46, 0.06)',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 1,
+      shadowRadius: 4,
+      elevation: 1,
+    },
+    md: {
+      shadowColor: 'rgba(26, 26, 46, 0.08)',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 1,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    lg: {
+      shadowColor: 'rgba(26, 26, 46, 0.10)',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 1,
+      shadowRadius: 24,
+      elevation: 6,
+    },
+  },
+  dark: {
+    sm: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
+    md: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
+    lg: {
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+    },
+  },
+} as const;
+
+export const animation = {
+  duration: {
+    fast: 120,
+    normal: 220,
+    slow: 360,
+    spring: 500,
+  },
+  easing: {
+    default: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+    spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+    decelerate: 'cubic-bezier(0, 0, 0.2, 1)',
+  },
+} as const;

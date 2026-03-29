@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Pressable, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeContext';
-import { borderRadius, spacing, fontSize, fontWeight } from '@/theme/tokens';
+import { borderRadius, spacing, fontSize, fontWeight, letterSpacing, animation } from '@/theme/tokens';
 
 type MirrorData = {
   understanding: string;
@@ -22,24 +22,70 @@ function MirrorSection({
   title,
   content,
   accent,
+  delay,
 }: {
   number: string;
   title: string;
   content: string;
   accent: string;
+  delay: number;
 }) {
   const { colors } = useTheme();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: animation.duration.slow,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: animation.duration.slow,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [delay, fadeAnim, slideAnim]);
+
+  // Use gold accent for section 3 (제안) badge
+  const isGoldBadge = number === '3';
 
   return (
-    <View style={sectionStyles.container}>
-      <View style={[sectionStyles.badge, { backgroundColor: accent + '20' }]}>
-        <Text style={[sectionStyles.badgeText, { color: accent }]}>{number}</Text>
+    <Animated.View
+      style={[
+        sectionStyles.container,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+      ]}
+    >
+      <View
+        style={[
+          sectionStyles.badge,
+          {
+            backgroundColor: isGoldBadge
+              ? colors.accent.goldSubtle
+              : accent + '20',
+          },
+        ]}
+      >
+        <Text
+          style={[
+            sectionStyles.badgeText,
+            { color: isGoldBadge ? colors.accent.gold : accent },
+          ]}
+        >
+          {number}
+        </Text>
       </View>
       <View style={sectionStyles.textArea}>
         <Text style={[sectionStyles.title, { color: colors.text.secondary }]}>{title}</Text>
         <Text style={[sectionStyles.content, { color: colors.text.primary }]}>{content}</Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -64,12 +110,20 @@ export function MirrorCard({ data, aiResponseId, onFeedback }: Props) {
     >
       <Text style={[styles.header, { color: colors.text.primary }]}>오늘의 거울</Text>
 
-      <MirrorSection number="1" title="이해" content={data.understanding} accent={colors.accent.cyan} />
-      <MirrorSection number="2" title="구조" content={data.structure} accent={colors.accent.blue} />
-      <MirrorSection number="3" title="제안" content={data.suggestion} accent={colors.accent.violet} />
+      <MirrorSection number="1" title="이해" content={data.understanding} accent={colors.accent.cyan} delay={0} />
+      <MirrorSection number="2" title="구조" content={data.structure} accent={colors.accent.blue} delay={120} />
+      <MirrorSection number="3" title="제안" content={data.suggestion} accent={colors.accent.violet} delay={240} />
 
       {data.question && (
-        <View style={[styles.questionBox, { borderTopColor: colors.surface.cardBorder }]}>
+        <View
+          style={[
+            styles.questionBox,
+            {
+              borderTopColor: colors.surface.cardBorder,
+              borderLeftColor: colors.accent.violet,
+            },
+          ]}
+        >
           <Text style={[styles.questionLabel, { color: colors.accent.violet }]}>성찰 질문</Text>
           <Text style={[styles.questionText, { color: colors.text.secondary }]}>{data.question}</Text>
         </View>
@@ -130,6 +184,7 @@ const sectionStyles = StyleSheet.create({
   badgeText: {
     fontSize: 13,
     fontWeight: '700',
+    letterSpacing: letterSpacing.wide,
   },
   textArea: {
     flex: 1,
@@ -138,7 +193,7 @@ const sectionStyles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: letterSpacing.wider,
     marginBottom: 4,
   },
   content: {
@@ -157,16 +212,22 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     marginBottom: spacing.lg,
+    letterSpacing: letterSpacing.wide,
   },
   questionBox: {
     marginTop: 8,
     paddingTop: 16,
+    paddingLeft: 14,
     borderTopWidth: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: 'transparent',
   },
   questionLabel: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     marginBottom: 6,
+    letterSpacing: letterSpacing.wider,
+    textTransform: 'uppercase',
   },
   questionText: {
     fontSize: fontSize.md,
