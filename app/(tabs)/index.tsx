@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
   Text,
@@ -59,6 +59,7 @@ export default function TodayScreen() {
   const [note, setNote] = useState('');
   const [mirrorResult, setMirrorResult] = useState<MirrorResult | null>(null);
   const [mirrorResponseId, setMirrorResponseId] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
   const isLoading = createEntry.isPending || mirror.isPending;
   const canSubmit = selectedEmotions.length > 0 && !isLoading;
@@ -99,7 +100,9 @@ export default function TodayScreen() {
                 });
                 Alert.alert('저장 완료', '감정이 기록되었습니다.');
                 handleReset();
-              } catch { /* ignore */ }
+              } catch {
+                Alert.alert('오류', '기록 저장에 실패했습니다.');
+              }
             }},
             { text: 'Pro 알아보기', onPress: () => router.push('/subscription' as any) },
           ]
@@ -120,8 +123,11 @@ export default function TodayScreen() {
       setMirrorResult(result);
       if (result.id) setMirrorResponseId(result.id);
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Scroll to top so user sees the MirrorCard result
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
     } catch {
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('오류', '감정 기록에 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
   }, [canSubmit, selectedEmotions, intensity, context, note, createEntry, mirror, subscriptionTier, mirrorUsage, handleReset]);
 
@@ -137,6 +143,7 @@ export default function TodayScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          ref={scrollRef}
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
           showsVerticalScrollIndicator={false}

@@ -41,11 +41,11 @@ export default function InsightsScreen() {
   const { data: user } = useUserProfile();
 
   const isPro = user?.subscription_tier === 'pro';
-  const { data: aiSummary } = useWeeklyAISummary(isPro);
-  const { data: aiPatterns } = usePatternExplanations(isPro);
+  const { data: aiSummary, isLoading: aiSummaryLoading, isError: aiSummaryError } = useWeeklyAISummary(isPro);
+  const { data: aiPatterns, isLoading: aiPatternsLoading, isError: aiPatternsError } = usePatternExplanations(isPro);
 
-  const isLoading = weeklyLoading || patternsLoading;
-  const isError = weeklyError || patternsError;
+  const isLoading = weeklyLoading || patternsLoading || (isPro && aiSummaryLoading) || (isPro && aiPatternsLoading);
+  const isError = weeklyError || patternsError || (isPro && aiSummaryError) || (isPro && aiPatternsError);
 
   if (isLoading) {
     return (
@@ -76,7 +76,8 @@ export default function InsightsScreen() {
   const avgIntensity = weekly?.avgIntensity ?? 0;
   const topContext = weekly?.topContext ?? '-';
 
-  const firstPattern = patterns?.[0];
+  const hasWeeklyData = chartData.some((d) => d.value > 0);
+  const hasPatterns = patterns && patterns.length > 0;
 
   return (
     <GradientBackground>
@@ -87,64 +88,93 @@ export default function InsightsScreen() {
       >
         <SectionHeader title="감정 인사이트" subtitle="최근 7일간의 감정 흐름이에요" />
 
-        <GlassCard style={styles.stabilityCard}>
-          <Text style={styles.stabilityLabel}>안정도 지수</Text>
-          <View style={styles.stabilityRow}>
-            <Text style={styles.stabilityNumber}>{stabilityIndex}</Text>
-            <View style={[styles.stabilityBadge, stabilityChange < 0 && styles.stabilityBadgeNeg]}>
-              <Text style={[styles.stabilityChange, stabilityChange < 0 && styles.stabilityChangeNeg]}>
-                {stabilityChange >= 0 ? `+${stabilityChange}` : String(stabilityChange)}
+        {hasWeeklyData ? (
+          <>
+            <GlassCard style={styles.stabilityCard}>
+              <Text style={styles.stabilityLabel}>안정도 지수</Text>
+              <View style={styles.stabilityRow}>
+                <Text style={styles.stabilityNumber}>{stabilityIndex}</Text>
+                <View style={[styles.stabilityBadge, stabilityChange < 0 && styles.stabilityBadgeNeg]}>
+                  <Text style={[styles.stabilityChange, stabilityChange < 0 && styles.stabilityChangeNeg]}>
+                    {stabilityChange >= 0 ? `+${Number(stabilityChange).toFixed(1)}` : Number(stabilityChange).toFixed(1)}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.stabilityDesc}>
+                {stabilityChange >= 0
+                  ? '지난주 대비 안정도가 높아졌어요'
+                  : '지난주 대비 안정도가 낮아졌어요'}
               </Text>
-            </View>
-          </View>
-          <Text style={styles.stabilityDesc}>
-            {stabilityChange >= 0
-              ? '지난주 대비 안정도가 높아졌어요'
-              : '지난주 대비 안정도가 낮아졌어요'}
-          </Text>
-        </GlassCard>
+            </GlassCard>
 
-        <GlassCard style={styles.chartCard}>
-          <Text style={styles.cardTitle}>주간 감정 강도</Text>
-          <MiniChart data={chartData} />
-        </GlassCard>
+            <GlassCard style={styles.chartCard}>
+              <Text style={styles.cardTitle}>주간 감정 강도</Text>
+              <MiniChart data={chartData} />
+            </GlassCard>
 
-        <GlassCard style={styles.statCard}>
-          <Text style={styles.cardTitle}>최근 7일 요약</Text>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{topEmotion}</Text>
-              <Text style={styles.statLabel}>가장 잦은 감정</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{avgIntensity}</Text>
-              <Text style={styles.statLabel}>평균 강도</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{topContext}</Text>
-              <Text style={styles.statLabel}>주요 상황</Text>
-            </View>
-          </View>
-        </GlassCard>
+            <GlassCard style={styles.statCard}>
+              <Text style={styles.cardTitle}>최근 7일 요약</Text>
+              <View style={styles.statRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{topEmotion}</Text>
+                  <Text style={styles.statLabel}>가장 잦은 감정</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{Number(avgIntensity).toFixed(1)}</Text>
+                  <Text style={styles.statLabel}>평균 강도</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{topContext}</Text>
+                  <Text style={styles.statLabel}>주요 상황</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </>
+        ) : (
+          <GlassCard style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>📝</Text>
+            <Text style={styles.emptyTitle}>이번 주는 아직 기록이 없어요</Text>
+            <Text style={styles.emptySubtitle}>감정을 기록하면 인사이트를 확인할 수 있어요</Text>
+          </GlassCard>
+        )}
 
-        {firstPattern && (
-          <GlassCard variant="highlight" style={styles.patternCard}>
-            <View style={styles.patternHeader}>
-              <Text style={styles.patternIcon}>🔍</Text>
-              <Text style={styles.patternTitle}>패턴 발견</Text>
-            </View>
-            <Text style={styles.patternText}>{firstPattern.description}</Text>
-            {firstPattern.suggestion && (
-              <Text style={styles.patternHint}>{firstPattern.suggestion}</Text>
-            )}
+        {hasPatterns ? (
+          patterns.map((pattern: any, index: number) => (
+            <GlassCard variant="highlight" style={styles.patternCard} key={index}>
+              <View style={styles.patternHeader}>
+                <Text style={styles.patternIcon}>🔍</Text>
+                <Text style={styles.patternTitle}>패턴 발견</Text>
+              </View>
+              <Text style={styles.patternText}>{pattern.description}</Text>
+              {pattern.suggestion && (
+                <Text style={styles.patternHint}>{pattern.suggestion}</Text>
+              )}
+            </GlassCard>
+          ))
+        ) : (
+          <GlassCard style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>패턴이 아직 발견되지 않았어요</Text>
+            <Text style={styles.emptySubtitle}>기록이 쌓이면 패턴을 분석해드릴게요</Text>
           </GlassCard>
         )}
 
         {/* AI Weekly Summary */}
         {isPro ? (
-          aiSummary ? (
+          aiSummaryLoading ? (
+            <GlassCard style={styles.aiCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 주간 요약</Text>
+              </View>
+              <View style={styles.aiLoadingRow}>
+                <ActivityIndicator size="small" color="#A78BFA" />
+                <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+              </View>
+            </GlassCard>
+          ) : aiSummary ? (
             <GlassCard style={styles.aiCard}>
               <View style={styles.aiHeader}>
                 <Ionicons name="sparkles" size={18} color="#A78BFA" />
@@ -179,7 +209,19 @@ export default function InsightsScreen() {
         )}
 
         {/* AI Pattern Explanations */}
-        {isPro && aiPatterns && aiPatterns.length > 0 && (
+        {isPro && aiPatternsLoading && (
+          <GlassCard style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <Ionicons name="analytics" size={18} color="#A78BFA" />
+              <Text style={styles.aiTitle}>AI 패턴 분석</Text>
+            </View>
+            <View style={styles.aiLoadingRow}>
+              <ActivityIndicator size="small" color="#A78BFA" />
+              <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+            </View>
+          </GlassCard>
+        )}
+        {isPro && !aiPatternsLoading && aiPatterns && aiPatterns.length > 0 && (
           <GlassCard style={styles.aiCard}>
             <View style={styles.aiHeader}>
               <Ionicons name="analytics" size={18} color="#A78BFA" />
@@ -288,6 +330,9 @@ const styles = StyleSheet.create({
   aiSuggestionLabel: { color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 4 },
   aiSuggestionText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
   proCard: { marginBottom: 16 },
+  emptyCard: { marginBottom: 16, alignItems: 'center', paddingVertical: 32 },
+  aiLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 },
+  aiLoadingText: { color: '#8E8EA0', fontSize: 14 },
   // AI pattern styles
   aiPatternItem: { paddingVertical: 8 },
   aiPatternDivider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },

@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useUserProfile, useUpdateUser } from '@/hooks/useApi';
@@ -54,12 +55,15 @@ export default function SettingsScreen() {
     if (user?.reminder_enabled !== undefined) setReminder(user.reminder_enabled);
   }, [user?.reminder_enabled]);
 
-  const displayName = user?.display_name ?? '-';
+  const displayName = user?.display_name || '이름을 설정해주세요';
   const plan = user?.subscription_tier === 'pro' ? 'Pro' : 'Free';
   const currentPersona = user?.persona ?? 'calm';
   const personaLabel = PERSONA_OPTIONS.find(p => p.key === currentPersona)?.label ?? '차분함';
 
+  const isMutating = updateUser.isPending;
+
   function cyclePersona() {
+    if (isMutating) return;
     const idx = PERSONA_OPTIONS.findIndex(p => p.key === currentPersona);
     const next = PERSONA_OPTIONS[(idx + 1) % PERSONA_OPTIONS.length];
     updateUser.mutate({ persona: next.key }, {
@@ -70,7 +74,7 @@ export default function SettingsScreen() {
 
   function handleEditProfile() {
     if (Platform.OS === 'web') {
-      const name = prompt('프로필 이름을 입력하세요', displayName === '-' ? '' : displayName);
+      const name = prompt('프로필 이름을 입력하세요', !user?.display_name ? '' : displayName);
       if (name !== null && name.trim()) {
         updateUser.mutate({ display_name: name.trim() }, {
           onSuccess: () => Alert.alert('프로필 수정', '이름이 변경되었습니다.'),
@@ -83,10 +87,10 @@ export default function SettingsScreen() {
           onSuccess: () => Alert.alert('프로필 수정', '이름이 변경되었습니다.'),
           onError: () => Alert.alert('오류', '이름 변경에 실패했습니다.'),
         });
-      }, 'plain-text', displayName === '-' ? '' : displayName);
+      }, 'plain-text', !user?.display_name ? '' : displayName);
     } else {
       // Android: use Modal with TextInput
-      setNameInput(displayName === '-' ? '' : displayName);
+      setNameInput(!user?.display_name ? '' : displayName);
       setShowNameModal(true);
     }
   }
@@ -199,7 +203,13 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>계정</Text>
-          <SettingRow icon="person-outline" title="프로필" subtitle={displayName} onPress={handleEditProfile} />
+          <SettingRow
+            icon="person-outline"
+            title="프로필"
+            subtitle={displayName}
+            onPress={handleEditProfile}
+            right={isMutating ? <ActivityIndicator size="small" color="#4A9EFF" /> : undefined}
+          />
           <SettingRow icon="card-outline" title="구독 관리" subtitle={plan} onPress={() => router.push('/subscription')} />
         </View>
 
@@ -211,6 +221,7 @@ export default function SettingsScreen() {
             right={
               <Switch
                 value={reminder}
+                disabled={isMutating}
                 onValueChange={(val) => {
                   setReminder(val);
                   updateUser.mutate({ reminder_enabled: val }, {
@@ -228,6 +239,7 @@ export default function SettingsScreen() {
             title="AI 페르소나"
             subtitle={personaLabel}
             onPress={cyclePersona}
+            right={isMutating ? <ActivityIndicator size="small" color="#4A9EFF" /> : undefined}
           />
           <SettingRow
             icon="time-outline"
@@ -257,7 +269,7 @@ export default function SettingsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>앱 정보</Text>
-          <SettingRow icon="information-circle-outline" title="버전" subtitle="1.0.0" right={null} />
+          <SettingRow icon="information-circle-outline" title="버전" subtitle={Constants.expoConfig?.version ?? '1.0.0'} right={null} />
         </View>
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>

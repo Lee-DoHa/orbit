@@ -85,14 +85,14 @@ export function MirrorCard({ data, aiResponseId, onFeedback }: Props) {
             onPress={() => handleFeedback(true)}
             disabled={feedback !== null}
           >
-            <Ionicons name={feedback === 'up' ? 'thumbs-up' : 'thumbs-up-outline'} size={18} color={feedback === 'up' ? '#7FE5A0' : '#8E8EA0'} />
+            <Ionicons name={feedback === 'up' ? 'thumbs-up' : 'thumbs-up-outline'} size={18} color={feedback === 'up' ? colors.status.success : colors.text.secondary} />
           </Pressable>
           <Pressable
             style={[styles.feedbackBtn, feedback === 'down' && styles.feedbackBtnActiveNeg]}
             onPress={() => handleFeedback(false)}
             disabled={feedback !== null}
           >
-            <Ionicons name={feedback === 'down' ? 'thumbs-down' : 'thumbs-down-outline'} size={18} color={feedback === 'down' ? '#FF6B6B' : '#8E8EA0'} />
+            <Ionicons name={feedback === 'down' ? 'thumbs-down' : 'thumbs-down-outline'} size={18} color={feedback === 'down' ? colors.status.error : colors.text.secondary} />
           </Pressable>
         </View>
       </View>
@@ -174,11 +174,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: colors.surface.glassBorder,
   },
   feedbackLabel: {
-    color: '#8E8EA0',
-    fontSize: 12,
+    color: colors.text.secondary,
+    fontSize: fontSize.xs,
   },
   feedbackButtons: {
     flexDirection: 'row',
@@ -187,12 +187,12 @@ const styles = StyleSheet.create({
   feedbackBtn: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: colors.surface.glass,
   },
   feedbackBtnActive: {
-    backgroundColor: 'rgba(127,229,160,0.1)',
+    backgroundColor: colors.status.success + '1A',
   },
   feedbackBtnActiveNeg: {
-    backgroundColor: 'rgba(255,107,107,0.1)',
+    backgroundColor: colors.status.error + '1A',
   },
 });

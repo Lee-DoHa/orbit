@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
 import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
 import { EMOTIONS, MAX_EMOTIONS, type EmotionId } from '@/lib/constants';
 
@@ -18,7 +18,13 @@ export function EmotionChipGroup({ selected, onToggle }: Props) {
         return (
           <Pressable
             key={emotion.id}
-            onPress={() => !isDisabled && onToggle(emotion.id)}
+            onPress={() => {
+              if (isDisabled) {
+                Alert.alert('', '최대 3개까지 선택할 수 있어요');
+                return;
+              }
+              onToggle(emotion.id);
+            }}
             style={[
               styles.chip,
               isSelected && { backgroundColor: emotionColor + '25', borderColor: emotionColor },

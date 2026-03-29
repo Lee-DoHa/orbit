@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ScrollView, Text, View, StyleSheet, Pressable, FlatList, ActivityIndicator, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -115,10 +115,30 @@ export default function ArchiveScreen() {
   const [filter, setFilter] = useState('전체');
   const [searchText, setSearchText] = useState('');
   const [contextFilter, setContextFilter] = useState<string | null>(null);
-  const { data: entries = [], isLoading, isError } = useEntries();
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { data: entries = [], isLoading, isError, refetch } = useEntries();
   const { data: user } = useUserProfile();
   const tier = (user?.subscription_tier || 'free') as 'free' | 'pro';
   const isPro = tier === 'pro';
+
+  const handleSearchChange = useCallback((text: string) => {
+    setSearchText(text);
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current);
+    }
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(text);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current);
+      }
+    };
+  }, []);
 
   let filtered =
     filter === '전체'
@@ -132,9 +152,9 @@ export default function ArchiveScreen() {
     filtered = filtered.filter((e: any) => new Date(e.recorded_at) >= sevenDaysAgo);
   }
 
-  // Pro: search
-  if (searchText && isPro) {
-    const q = searchText.toLowerCase();
+  // Pro: search (debounced)
+  if (debouncedSearch && isPro) {
+    const q = debouncedSearch.toLowerCase();
     filtered = filtered.filter((e: any) =>
       e.note?.toLowerCase().includes(q) || e.emotions.some((em: string) => em.includes(q))
     );
@@ -179,10 +199,10 @@ export default function ArchiveScreen() {
               placeholder="기록 검색..."
               placeholderTextColor="#5A5A6E"
               value={searchText}
-              onChangeText={setSearchText}
+              onChangeText={handleSearchChange}
             />
             {searchText.length > 0 && (
-              <Pressable onPress={() => setSearchText('')}>
+              <Pressable onPress={() => { setSearchText(''); setDebouncedSearch(''); if (searchTimerRef.current) clearTimeout(searchTimerRef.current); }}>
                 <Ionicons name="close-circle" size={18} color="#5A5A6E" />
               </Pressable>
             )}
@@ -197,7 +217,7 @@ export default function ArchiveScreen() {
           </Pressable>
         )}
 
-        {isPro && (
+        {isPro ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.contextFilterScroll}>
             <Pressable
               onPress={() => setContextFilter(null)}
@@ -215,6 +235,11 @@ export default function ArchiveScreen() {
               </Pressable>
             ))}
           </ScrollView>
+        ) : (
+          <Pressable style={styles.contextHintBanner} onPress={() => router.push('/subscription' as any)}>
+            <Ionicons name="filter-outline" size={14} color="#8E8EA0" />
+            <Text style={styles.contextHintText}>Pro 플랜에서 상황별 필터를 사용할 수 있어요</Text>
+          </Pressable>
         )}
 
         {isLoading ? (
@@ -226,12 +251,20 @@ export default function ArchiveScreen() {
             <Text style={styles.emptyIcon}>📋</Text>
             <Text style={styles.emptyTitle}>기록을 불러올 수 없어요</Text>
             <Text style={styles.emptySubtitle}>네트워크 연결을 확인해주세요</Text>
+            <Pressable style={styles.retryButton} onPress={() => refetch()}>
+              <Ionicons name="refresh-outline" size={18} color="#4A9EFF" />
+              <Text style={styles.retryButtonText}>다시 시도</Text>
+            </Pressable>
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>🌙</Text>
             <Text style={styles.emptyTitle}>아직 기록이 없어요</Text>
             <Text style={styles.emptySubtitle}>오늘 탭에서 첫 감정을 기록해보세요</Text>
+            <Pressable style={styles.emptyActionButton} onPress={() => router.push('/(tabs)')}>
+              <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.emptyActionButtonText}>감정 기록하기</Text>
+            </Pressable>
           </View>
         ) : (
           <FlatList
@@ -330,4 +363,10 @@ const styles = StyleSheet.create({
   contextFilterScroll: { maxHeight: 44, marginBottom: 12 },
   archiveBanner: { padding: 16, backgroundColor: 'rgba(74,158,255,0.08)', borderRadius: 12, marginTop: 12, alignItems: 'center' },
   archiveBannerText: { color: '#4A9EFF', fontSize: 13 },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(74,158,255,0.12)', borderWidth: 1, borderColor: 'rgba(74,158,255,0.3)' },
+  retryButtonText: { color: '#4A9EFF', fontSize: 14, fontWeight: '600' },
+  emptyActionButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, backgroundColor: '#4A9EFF' },
+  emptyActionButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  contextHintBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12 },
+  contextHintText: { color: '#8E8EA0', fontSize: 12 },
 });

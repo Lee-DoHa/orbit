@@ -9,6 +9,7 @@ import { EmotionChipGroup } from '@/components/emotion/EmotionChipGroup';
 import { IntensitySlider } from '@/components/emotion/IntensitySlider';
 import { ContextTagSelector } from '@/components/emotion/ContextTagSelector';
 import { useEntry, useDeleteEntry, useUpdateEntry } from '@/hooks/useApi';
+import { useQueryClient } from '@tanstack/react-query';
 import { EMOTIONS, CONTEXTS, type EmotionId, type ContextId } from '@/lib/constants';
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -20,9 +21,12 @@ const EMOTION_COLORS: Record<string, string> = {
 export default function EntryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { data: entry, isLoading, isError } = useEntry(id!);
+  const queryClient = useQueryClient();
+  const { data: entry, isLoading, isError, refetch } = useEntry(id!);
   const deleteEntry = useDeleteEntry();
   const updateEntry = useUpdateEntry();
+  const isSaving = updateEntry.isPending;
+  const isDeleting = deleteEntry.isPending;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editEmotions, setEditEmotions] = useState<EmotionId[]>([]);
@@ -47,6 +51,10 @@ export default function EntryDetailScreen() {
   }
 
   async function handleSave() {
+    if (editEmotions.length === 0) {
+      Alert.alert('알림', '감정을 최소 1개 이상 선택해주세요.');
+      return;
+    }
     try {
       await updateEntry.mutateAsync({ id: id!, body: {
         emotionIds: editEmotions,
@@ -55,9 +63,10 @@ export default function EntryDetailScreen() {
         note: editNote || undefined,
       }});
       setIsEditing(false);
+      await queryClient.invalidateQueries({ queryKey: ['entries', id] });
       Alert.alert('수정 완료', '기록이 수정되었습니다.');
     } catch {
-      Alert.alert('오류', '수정에 실패했습니다.');
+      Alert.alert('오류', '수정에 실패했습니다. 네트워크 연결을 확인해주세요.');
     }
   }
 
@@ -72,7 +81,7 @@ export default function EntryDetailScreen() {
             await deleteEntry.mutateAsync(id!);
             router.back();
           } catch {
-            Alert.alert('오류', '삭제에 실패했습니다.');
+            Alert.alert('오류', '삭제에 실패했습니다. 네트워크 연결을 확인해주세요.');
           }
         },
       },
@@ -94,6 +103,13 @@ export default function EntryDetailScreen() {
       <GradientBackground>
         <View style={styles.loadingContainer}>
           <Text style={styles.emptyText}>기록을 찾을 수 없습니다.</Text>
+          <Pressable style={styles.retryButton} onPress={() => refetch()}>
+            <Ionicons name="refresh-outline" size={18} color="#4A9EFF" />
+            <Text style={styles.retryButtonText}>다시 시도</Text>
+          </Pressable>
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>돌아가기</Text>
+          </Pressable>
         </View>
       </GradientBackground>
     );
@@ -109,19 +125,39 @@ export default function EntryDetailScreen() {
         <Text style={styles.date}>{entry.date} ({entry.dayOfWeek})</Text>
 
         <View style={styles.actionRow}>
-          <Pressable style={styles.actionBtn} onPress={isEditing ? handleSave : startEdit}>
-            <Ionicons name={isEditing ? "checkmark-outline" : "create-outline"} size={20} color="#4A9EFF" />
-            <Text style={styles.actionText}>{isEditing ? '저장' : '수정'}</Text>
+          <Pressable
+            style={[styles.actionBtn, (isSaving || isDeleting) && styles.actionBtnDisabled]}
+            onPress={isEditing ? handleSave : startEdit}
+            disabled={isSaving || isDeleting}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#4A9EFF" />
+            ) : (
+              <Ionicons name={isEditing ? "checkmark-outline" : "create-outline"} size={20} color="#4A9EFF" />
+            )}
+            <Text style={styles.actionText}>{isEditing ? (isSaving ? '저장 중...' : '저장') : '수정'}</Text>
           </Pressable>
           {isEditing && (
-            <Pressable style={styles.actionBtn} onPress={() => setIsEditing(false)}>
+            <Pressable
+              style={[styles.actionBtn, isSaving && styles.actionBtnDisabled]}
+              onPress={() => setIsEditing(false)}
+              disabled={isSaving}
+            >
               <Ionicons name="close-outline" size={20} color="#8E8EA0" />
               <Text style={[styles.actionText, { color: '#8E8EA0' }]}>취소</Text>
             </Pressable>
           )}
-          <Pressable style={styles.actionBtn} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-            <Text style={[styles.actionText, { color: '#FF6B6B' }]}>삭제</Text>
+          <Pressable
+            style={[styles.actionBtn, (isSaving || isDeleting) && styles.actionBtnDisabled]}
+            onPress={handleDelete}
+            disabled={isSaving || isDeleting}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="#FF6B6B" />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+            )}
+            <Text style={[styles.actionText, { color: '#FF6B6B' }]}>{isDeleting ? '삭제 중...' : '삭제'}</Text>
           </Pressable>
         </View>
 
@@ -217,6 +253,11 @@ const styles = StyleSheet.create({
   emptyText: { color: '#8E8EA0', fontSize: 15 },
   actionRow: { flexDirection: 'row', gap: 16, marginBottom: 16 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.03)' },
+  actionBtnDisabled: { opacity: 0.5 },
   actionText: { color: '#4A9EFF', fontSize: 13, fontWeight: '600' },
   editInput: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', padding: 12, color: '#F0F0F5', fontSize: 15, minHeight: 60, textAlignVertical: 'top' },
+  retryButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(74,158,255,0.12)', borderWidth: 1, borderColor: 'rgba(74,158,255,0.3)' },
+  retryButtonText: { color: '#4A9EFF', fontSize: 14, fontWeight: '600' },
+  backButton: { marginTop: 12, paddingHorizontal: 20, paddingVertical: 10 },
+  backButtonText: { color: '#8E8EA0', fontSize: 14 },
 });

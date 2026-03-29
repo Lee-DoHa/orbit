@@ -52,8 +52,8 @@ export default function GrowthScreen() {
   const [reflectionSaved, setReflectionSaved] = useState(false);
 
   // AI features (Pro only)
-  const { data: smartExp } = useSmartExperiment(isPro);
-  const { data: monthlyNarrative } = useMonthlyNarrative(isPro);
+  const { data: smartExp, isLoading: smartExpLoading } = useSmartExperiment(isPro);
+  const { data: monthlyNarrative, isLoading: narrativeLoading } = useMonthlyNarrative(isPro);
 
   // Experiment done = already has a response from the API
   const experimentDone = !!experiment?.status;
@@ -76,13 +76,16 @@ export default function GrowthScreen() {
       onSuccess: () => {
         Alert.alert('완료!', '이번 주 실험을 완료했어요');
       },
-      onError: () => Alert.alert('오류', '요청에 실패했습니다. 다시 시도해주세요.'),
+      onError: () => Alert.alert('오류', '실험 완료에 실패했습니다.'),
     });
   }
 
   function handleExperimentSkip() {
     completeExperiment.mutate('skipped', {
-      onError: () => Alert.alert('오류', '요청에 실패했습니다.'),
+      onSuccess: () => {
+        Alert.alert('건너뛰기', '다음 실험을 준비할게요.');
+      },
+      onError: () => Alert.alert('오류', '실험 건너뛰기에 실패했습니다.'),
     });
   }
 
@@ -100,7 +103,7 @@ export default function GrowthScreen() {
         setReflectionSaved(true);
         Alert.alert('저장 완료', '회고가 저장되었습니다.');
       },
-      onError: () => Alert.alert('오류', '저장에 실패했습니다.'),
+      onError: () => Alert.alert('오류', '회고 저장에 실패했습니다.'),
     });
   }
 
@@ -177,11 +180,27 @@ export default function GrowthScreen() {
             </View>
           ) : (
             <View style={styles.expButtons}>
-              <Pressable style={styles.expBtn} onPress={handleExperimentComplete}>
-                <Text style={styles.expBtnText}>완료</Text>
+              <Pressable
+                style={[styles.expBtn, completeExperiment.isPending && { opacity: 0.5 }]}
+                onPress={handleExperimentComplete}
+                disabled={completeExperiment.isPending}
+              >
+                {completeExperiment.isPending && completeExperiment.variables === 'completed' ? (
+                  <ActivityIndicator size="small" color="#F0F0F5" />
+                ) : (
+                  <Text style={styles.expBtnText}>완료</Text>
+                )}
               </Pressable>
-              <Pressable style={[styles.expBtn, styles.expBtnGhost]} onPress={handleExperimentSkip}>
-                <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
+              <Pressable
+                style={[styles.expBtn, styles.expBtnGhost, completeExperiment.isPending && { opacity: 0.5 }]}
+                onPress={handleExperimentSkip}
+                disabled={completeExperiment.isPending}
+              >
+                {completeExperiment.isPending && completeExperiment.variables === 'skipped' ? (
+                  <ActivityIndicator size="small" color="#8E8EA0" />
+                ) : (
+                  <Text style={[styles.expBtnText, styles.expBtnGhostText]}>건너뛰기</Text>
+                )}
               </Pressable>
             </View>
           )}
@@ -189,7 +208,18 @@ export default function GrowthScreen() {
 
         {/* AI Smart Experiment (Pro) */}
         {isPro ? (
-          smartExp ? (
+          smartExpLoading ? (
+            <GlassCard style={styles.aiExpCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="sparkles" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 맞춤 실험</Text>
+              </View>
+              <View style={styles.aiLoadingRow}>
+                <ActivityIndicator size="small" color="#A78BFA" />
+                <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+              </View>
+            </GlassCard>
+          ) : smartExp ? (
             <GlassCard style={styles.aiExpCard}>
               <View style={styles.aiHeader}>
                 <Ionicons name="sparkles" size={18} color="#A78BFA" />
@@ -226,15 +256,20 @@ export default function GrowthScreen() {
             onChangeText={setReflectionText}
             multiline
             maxLength={500}
-            editable={!reflectionSaved}
+            editable={!reflectionSaved && !saveReflection.isPending}
           />
+          <Text style={styles.charCount}>{reflectionText.length}/500</Text>
           {!reflectionSaved ? (
             <Pressable
-              style={[styles.reflectSaveBtn, !reflectionText.trim() && { opacity: 0.4 }]}
+              style={[styles.reflectSaveBtn, (!reflectionText.trim() || saveReflection.isPending) && { opacity: 0.4 }]}
               onPress={handleSaveReflection}
-              disabled={!reflectionText.trim()}
+              disabled={!reflectionText.trim() || saveReflection.isPending}
             >
-              <Text style={styles.reflectSaveBtnText}>저장</Text>
+              {saveReflection.isPending ? (
+                <ActivityIndicator size="small" color="#F0F0F5" />
+              ) : (
+                <Text style={styles.reflectSaveBtnText}>저장</Text>
+              )}
             </Pressable>
           ) : (
             <View style={styles.reflectSaved}>
@@ -246,7 +281,18 @@ export default function GrowthScreen() {
 
         {/* AI Monthly Narrative (Pro) */}
         {isPro ? (
-          monthlyNarrative ? (
+          narrativeLoading ? (
+            <GlassCard style={styles.aiNarrativeCard}>
+              <View style={styles.aiHeader}>
+                <Ionicons name="book" size={18} color="#A78BFA" />
+                <Text style={styles.aiTitle}>AI 월간 내러티브</Text>
+              </View>
+              <View style={styles.aiLoadingRow}>
+                <ActivityIndicator size="small" color="#A78BFA" />
+                <Text style={styles.aiLoadingText}>AI가 분석 중이에요...</Text>
+              </View>
+            </GlassCard>
+          ) : monthlyNarrative ? (
             <GlassCard style={styles.aiNarrativeCard}>
               <View style={styles.aiHeader}>
                 <Ionicons name="book" size={18} color="#A78BFA" />
@@ -378,4 +424,7 @@ const styles = StyleSheet.create({
   },
   lookAheadLabel: { color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 4 },
   lookAheadText: { color: '#C0C0CC', fontSize: 13, lineHeight: 20 },
+  charCount: { color: '#5A5A6E', fontSize: 12, textAlign: 'right', marginTop: 6 },
+  aiLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  aiLoadingText: { color: '#8E8EA0', fontSize: 13 },
 });

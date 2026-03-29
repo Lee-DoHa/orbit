@@ -34,7 +34,7 @@ export function IntensitySlider({ value, onChange }: Props) {
               <Text
                 style={[
                   styles.segmentText,
-                  isActive && { color: '#0A0E1A', fontWeight: '700' },
+                  isActive && { color: colors.text.inverse, fontWeight: '700' },
                 ]}
               >
                 {level}

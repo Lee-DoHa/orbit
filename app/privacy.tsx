@@ -1,9 +1,11 @@
-import { ScrollView, View, Text, StyleSheet } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { colors, spacing, fontSize, fontWeight } from '@/theme/tokens';
 
-const SECTIONS = [
+const CONTACT_EMAIL = 'orbit.app.kr@gmail.com';
+
+const SECTIONS: { title: string; body: string; hasEmail?: boolean }[] = [
   {
     title: '1. 수집하는 개인정보',
     body: 'ORBIT은 서비스 제공을 위해 다음의 개인정보를 수집합니다.\n\n• 이메일 주소 (회원가입 및 로그인)\n• 감정 기록 데이터 (감정 종류, 강도, 상황, 메모)\n• 앱 사용 데이터 (기록 빈도, 기능 사용 패턴)',
@@ -30,7 +32,8 @@ const SECTIONS = [
   },
   {
     title: '7. 연락처',
-    body: '개인정보 관련 문의사항은 아래 이메일로 연락해주세요.\n\n• orbit.app.kr@gmail.com',
+    body: '개인정보 관련 문의사항은 아래 이메일로 연락해주세요.',
+    hasEmail: true,
   },
   {
     title: '8. 시행일',
@@ -54,6 +57,14 @@ export default function PrivacyScreen() {
           <View key={index} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <Text style={styles.sectionBody}>{section.body}</Text>
+            {section.hasEmail && (
+              <Pressable
+                style={styles.emailLink}
+                onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}`)}
+              >
+                <Text style={styles.emailText}>{CONTACT_EMAIL}</Text>
+              </Pressable>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -87,5 +98,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.text.secondary,
     lineHeight: 20,
+  },
+  emailLink: {
+    marginTop: spacing.sm,
+  },
+  emailText: {
+    fontSize: fontSize.sm,
+    color: colors.accent.blue,
+    textDecorationLine: 'underline',
   },
 });

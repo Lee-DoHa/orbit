@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Alert, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { CosmicButton } from '@/components/ui/CosmicButton';
@@ -8,6 +9,8 @@ import { signIn, signUp, confirmSignUp, forgotPassword, confirmNewPassword, rese
 import { useUserStore } from '@/stores/userStore';
 
 type Mode = 'login' | 'signup' | 'confirm' | 'forgot' | 'reset';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getKoreanError(err: any): string {
   const msg = err?.message || err?.toString() || '';
@@ -32,15 +35,38 @@ export default function AuthScreen() {
   const [confirmCode, setConfirmCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const setUser = useUserStore((s) => s.setUser);
+
+  const passwordRef = useRef<TextInput>(null);
+  const confirmCodeRef = useRef<TextInput>(null);
+  const newPasswordRef = useRef<TextInput>(null);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const validateEmail = useCallback((): boolean => {
+    if (!EMAIL_REGEX.test(email.trim())) {
+      Alert.alert('이메일 형식 오류', '올바른 이메일 형식을 입력해주세요.');
+      return false;
+    }
+    return true;
+  }, [email]);
 
   const handleLogin = async () => {
     if (!email || !password) return;
+    if (!validateEmail()) return;
     setLoading(true);
     try {
-      const session = await signIn(email, password);
+      const session = await signIn(email.trim(), password);
       const sub = session.getIdToken().payload.sub;
-      setUser({ id: sub, email, displayName: email.split('@')[0] });
+      setUser({ id: sub, email: email.trim(), displayName: email.split('@')[0] });
       router.replace('/(tabs)');
     } catch (err: any) {
       if (err?.message?.includes('User is not confirmed')) {
@@ -56,9 +82,10 @@ export default function AuthScreen() {
 
   const handleSignUp = async () => {
     if (!email || !password) return;
+    if (!validateEmail()) return;
     setLoading(true);
     try {
-      await signUp(email, password);
+      await signUp(email.trim(), password);
       setMode('confirm');
     } catch (err: any) {
       Alert.alert('회원가입 실패', getKoreanError(err));
@@ -71,7 +98,7 @@ export default function AuthScreen() {
     if (!confirmCode) return;
     setLoading(true);
     try {
-      await confirmSignUp(email, confirmCode);
+      await confirmSignUp(email.trim(), confirmCode);
       Alert.alert('인증 완료', '로그인해주세요.');
       setMode('login');
     } catch (err: any) {
@@ -86,11 +113,13 @@ export default function AuthScreen() {
       Alert.alert('이메일 입력', '비밀번호를 재설정할 이메일을 입력해주세요.');
       return;
     }
+    if (!validateEmail()) return;
     setLoading(true);
     try {
-      await forgotPassword(email);
+      await forgotPassword(email.trim());
       Alert.alert('인증 코드 발송', '이메일로 인증 코드가 발송되었습니다.');
       setMode('reset');
+      setResendCooldown(60);
     } catch (err: any) {
       Alert.alert('오류', getKoreanError(err));
     } finally {
@@ -102,7 +131,7 @@ export default function AuthScreen() {
     if (!confirmCode || !newPassword) return;
     setLoading(true);
     try {
-      await confirmNewPassword(email, confirmCode, newPassword);
+      await confirmNewPassword(email.trim(), confirmCode, newPassword);
       Alert.alert('비밀번호 변경 완료', '새 비밀번호로 로그인해주세요.');
       setConfirmCode('');
       setNewPassword('');
@@ -115,10 +144,11 @@ export default function AuthScreen() {
   };
 
   const handleResendCode = async () => {
-    if (!email) return;
+    if (!email || resendCooldown > 0) return;
     setLoading(true);
     try {
-      await resendConfirmationCode(email);
+      await resendConfirmationCode(email.trim());
+      setResendCooldown(60);
       Alert.alert('재발송 완료', '인증 코드가 다시 발송되었습니다.');
     } catch (err: any) {
       Alert.alert('재발송 실패', getKoreanError(err));
@@ -143,6 +173,7 @@ export default function AuthScreen() {
             <>
               <Text style={styles.label}>{email}로 전송된 인증 코드를 입력하세요</Text>
               <TextInput
+                ref={confirmCodeRef}
                 style={styles.input}
                 placeholder="인증 코드"
                 placeholderTextColor={colors.text.tertiary}
@@ -150,13 +181,15 @@ export default function AuthScreen() {
                 onChangeText={setConfirmCode}
                 keyboardType="number-pad"
                 autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleConfirm}
               />
               <CosmicButton title="인증하기" onPress={handleConfirm} disabled={loading || !confirmCode} />
               <CosmicButton
-                title="인증 코드 재발송"
+                title={resendCooldown > 0 ? `재발송 (${resendCooldown}초)` : '인증 코드 재발송'}
                 variant="ghost"
                 onPress={handleResendCode}
-                disabled={loading}
+                disabled={loading || resendCooldown > 0}
               />
             </>
           ) : mode === 'forgot' ? (
@@ -171,6 +204,8 @@ export default function AuthScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleForgotPassword}
               />
               <CosmicButton title="인증 코드 발송" onPress={handleForgotPassword} disabled={loading || !email} />
               <CosmicButton
@@ -183,6 +218,7 @@ export default function AuthScreen() {
             <>
               <Text style={styles.label}>{email}로 전송된 인증 코드와 새 비밀번호를 입력하세요</Text>
               <TextInput
+                ref={confirmCodeRef}
                 style={styles.input}
                 placeholder="인증 코드"
                 placeholderTextColor={colors.text.tertiary}
@@ -190,16 +226,40 @@ export default function AuthScreen() {
                 onChangeText={setConfirmCode}
                 keyboardType="number-pad"
                 autoFocus
+                returnKeyType="next"
+                onSubmitEditing={() => newPasswordRef.current?.focus()}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="새 비밀번호 (8자 이상)"
-                placeholderTextColor={colors.text.tertiary}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  ref={newPasswordRef}
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder="새 비밀번호 (8자 이상)"
+                  placeholderTextColor={colors.text.tertiary}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleResetPassword}
+                />
+                <Pressable
+                  style={styles.eyeButton}
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name={showNewPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color={colors.text.tertiary}
+                  />
+                </Pressable>
+              </View>
               <CosmicButton title="비밀번호 변경" onPress={handleResetPassword} disabled={loading || !confirmCode || !newPassword} />
+              <CosmicButton
+                title={resendCooldown > 0 ? `재발송 (${resendCooldown}초)` : '인증 코드 재발송'}
+                variant="ghost"
+                onPress={handleResendCode}
+                disabled={loading || resendCooldown > 0}
+              />
               <CosmicButton
                 title="로그인으로 돌아가기"
                 variant="ghost"
@@ -216,15 +276,33 @@ export default function AuthScreen() {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
               />
-              <TextInput
-                style={styles.input}
-                placeholder={mode === 'signup' ? "비밀번호 (8자 이상, 대소문자+숫자)" : "비밀번호 (8자 이상)"}
-                placeholderTextColor={colors.text.tertiary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  ref={passwordRef}
+                  style={[styles.input, styles.passwordInput]}
+                  placeholder={mode === 'signup' ? "비밀번호 (8자 이상, 대소문자+숫자)" : "비밀번호 (8자 이상)"}
+                  placeholderTextColor={colors.text.tertiary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={mode === 'login' ? handleLogin : handleSignUp}
+                />
+                <Pressable
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  hitSlop={8}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={22}
+                    color={colors.text.tertiary}
+                  />
+                </Pressable>
+              </View>
               {mode === 'login' ? (
                 <>
                   <CosmicButton title="로그인" onPress={handleLogin} disabled={loading} />
@@ -295,5 +373,20 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     color: colors.text.primary,
     fontSize: fontSize.md,
+  },
+  passwordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
   },
 });

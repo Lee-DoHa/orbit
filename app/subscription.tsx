@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Pressable, Alert, Platform, Linking } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Pressable, Alert, Platform, Linking, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +44,7 @@ export default function SubscriptionScreen() {
   const insets = useSafeAreaInsets();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('annual');
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const { data: user } = useUserProfile();
   const queryClient = useQueryClient();
 
@@ -82,7 +83,7 @@ export default function SubscriptionScreen() {
   }
 
   async function handleRestore() {
-    setLoading(true);
+    setRestoring(true);
     try {
       const success = await restorePurchases();
       if (success) {
@@ -94,7 +95,7 @@ export default function SubscriptionScreen() {
     } catch {
       Alert.alert('오류', '구매 복원에 실패했습니다.');
     } finally {
-      setLoading(false);
+      setRestoring(false);
     }
   }
 
@@ -159,6 +160,20 @@ export default function SubscriptionScreen() {
               <Ionicons name="checkmark-circle" size={32} color={colors.accent.cyan} />
               <Text style={styles.proActiveText}>현재 Pro 플랜 사용 중</Text>
             </View>
+            <View style={styles.proDetails}>
+              <View style={styles.proDetailRow}>
+                <Ionicons name="infinite-outline" size={18} color={colors.text.secondary} />
+                <Text style={styles.proDetailText}>Mirror AI 무제한 분석</Text>
+              </View>
+              <View style={styles.proDetailRow}>
+                <Ionicons name="analytics-outline" size={18} color={colors.text.secondary} />
+                <Text style={styles.proDetailText}>고급 인사이트 및 패턴 분석</Text>
+              </View>
+              <View style={styles.proDetailRow}>
+                <Ionicons name="download-outline" size={18} color={colors.text.secondary} />
+                <Text style={styles.proDetailText}>데이터 내보내기</Text>
+              </View>
+            </View>
             <Pressable style={styles.downgradeButton} onPress={handleDowngrade}>
               <Text style={styles.downgradeText}>Free 플랜으로 전환</Text>
             </Pressable>
@@ -198,8 +213,19 @@ export default function SubscriptionScreen() {
 
             {/* Restore purchases (native only) */}
             {Platform.OS !== 'web' && (
-              <Pressable style={styles.restoreButton} onPress={handleRestore}>
-                <Text style={styles.restoreText}>구매 복원</Text>
+              <Pressable
+                style={[styles.restoreButton, restoring && styles.restoreButtonDisabled]}
+                onPress={handleRestore}
+                disabled={restoring}
+              >
+                {restoring ? (
+                  <View style={styles.restoreLoadingRow}>
+                    <ActivityIndicator size="small" color={colors.text.tertiary} />
+                    <Text style={styles.restoreText}>복원 중...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.restoreText}>구매 복원</Text>
+                )}
               </Pressable>
             )}
           </>
@@ -283,6 +309,20 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.accent.cyan,
   },
+  proDetails: {
+    marginTop: spacing.md,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  proDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  proDetailText: {
+    fontSize: fontSize.sm,
+    color: colors.text.secondary,
+  },
   downgradeButton: {
     marginTop: spacing.md,
     paddingVertical: spacing.sm,
@@ -356,6 +396,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.text.tertiary,
     textDecorationLine: 'underline',
+  },
+  restoreButtonDisabled: {
+    opacity: 0.5,
+  },
+  restoreLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   comparisonHeader: {
     flexDirection: 'row',
