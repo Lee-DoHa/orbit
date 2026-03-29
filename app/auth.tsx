@@ -4,10 +4,26 @@ import { router } from 'expo-router';
 import { GradientBackground } from '@/components/ui/GradientBackground';
 import { CosmicButton } from '@/components/ui/CosmicButton';
 import { colors, spacing, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
-import { signIn, signUp, confirmSignUp, forgotPassword, confirmNewPassword, resendConfirmationCode } from '@/lib/auth';
+import { signIn, signUp, confirmSignUp, forgotPassword, confirmNewPassword, resendConfirmationCode, isConfigured } from '@/lib/auth';
 import { useUserStore } from '@/stores/userStore';
 
 type Mode = 'login' | 'signup' | 'confirm' | 'forgot' | 'reset';
+
+function getKoreanError(err: any): string {
+  const msg = err?.message || err?.toString() || '';
+  if (msg.includes('User already exists')) return '이미 가입된 이메일입니다.';
+  if (msg.includes('Password did not conform')) return '비밀번호는 8자 이상, 대소문자와 숫자를 포함해야 합니다.';
+  if (msg.includes('Invalid parameter')) return '입력값을 확인해주세요.';
+  if (msg.includes('Username cannot be empty')) return '이메일을 입력해주세요.';
+  if (msg.includes('Incorrect username or password')) return '이메일 또는 비밀번호가 올바르지 않습니다.';
+  if (msg.includes('User is not confirmed')) return '이메일 인증이 완료되지 않았습니다. 인증 코드를 입력해주세요.';
+  if (msg.includes('Code mismatch')) return '인증 코드가 올바르지 않습니다.';
+  if (msg.includes('Expired')) return '인증 코드가 만료되었습니다. 재발송해주세요.';
+  if (msg.includes('Limit exceeded')) return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+  if (msg.includes('Network')) return '네트워크 연결을 확인해주세요.';
+  if (msg.includes('not configured') || msg.includes('Not configured')) return 'Cognito가 설정되지 않았습니다. 환경변수를 확인해주세요.';
+  return msg || '알 수 없는 오류가 발생했습니다.';
+}
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('login');
@@ -27,7 +43,12 @@ export default function AuthScreen() {
       setUser({ id: sub, email, displayName: email.split('@')[0] });
       router.replace('/(tabs)');
     } catch (err: any) {
-      Alert.alert('로그인 실패', err.message || '이메일 또는 비밀번호를 확인해주세요.');
+      if (err?.message?.includes('User is not confirmed')) {
+        setMode('confirm');
+        Alert.alert('이메일 인증 필요', '회원가입 시 전송된 인증 코드를 입력해주세요.');
+      } else {
+        Alert.alert('로그인 실패', getKoreanError(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -40,7 +61,7 @@ export default function AuthScreen() {
       await signUp(email, password);
       setMode('confirm');
     } catch (err: any) {
-      Alert.alert('회원가입 실패', err.message || '다시 시도해주세요.');
+      Alert.alert('회원가입 실패', getKoreanError(err));
     } finally {
       setLoading(false);
     }
@@ -54,7 +75,7 @@ export default function AuthScreen() {
       Alert.alert('인증 완료', '로그인해주세요.');
       setMode('login');
     } catch (err: any) {
-      Alert.alert('인증 실패', err.message || '코드를 확인해주세요.');
+      Alert.alert('인증 실패', getKoreanError(err));
     } finally {
       setLoading(false);
     }
@@ -71,7 +92,7 @@ export default function AuthScreen() {
       Alert.alert('인증 코드 발송', '이메일로 인증 코드가 발송되었습니다.');
       setMode('reset');
     } catch (err: any) {
-      Alert.alert('오류', err.message || '인증 코드 발송에 실패했습니다.');
+      Alert.alert('오류', getKoreanError(err));
     } finally {
       setLoading(false);
     }
@@ -87,7 +108,7 @@ export default function AuthScreen() {
       setNewPassword('');
       setMode('login');
     } catch (err: any) {
-      Alert.alert('비밀번호 변경 실패', err.message || '코드를 확인해주세요.');
+      Alert.alert('비밀번호 변경 실패', getKoreanError(err));
     } finally {
       setLoading(false);
     }
@@ -100,7 +121,7 @@ export default function AuthScreen() {
       await resendConfirmationCode(email);
       Alert.alert('재발송 완료', '인증 코드가 다시 발송되었습니다.');
     } catch (err: any) {
-      Alert.alert('재발송 실패', err.message || '다시 시도해주세요.');
+      Alert.alert('재발송 실패', getKoreanError(err));
     } finally {
       setLoading(false);
     }
@@ -198,7 +219,7 @@ export default function AuthScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="비밀번호 (8자 이상)"
+                placeholder={mode === 'signup' ? "비밀번호 (8자 이상, 대소문자+숫자)" : "비밀번호 (8자 이상)"}
                 placeholderTextColor={colors.text.tertiary}
                 value={password}
                 onChangeText={setPassword}

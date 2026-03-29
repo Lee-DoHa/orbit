@@ -11,7 +11,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+// expo-haptics: lazy import for web safety
+let Haptics: any = null;
+if (Platform.OS !== 'web') {
+  try { Haptics = require('expo-haptics'); } catch {}
+}
 import { useCreateEntry, useMirrorAnalysis, useMirrorUsage, useMirrorFeedback, useUserProfile } from '@/hooks/useApi';
 import { canUseFeature, FREE_MIRROR_LIMIT } from '@/lib/subscription';
 import { GradientBackground } from '@/components/ui/GradientBackground';
@@ -115,9 +119,9 @@ export default function TodayScreen() {
       const result = await mirror.mutateAsync(entry.id);
       setMirrorResult(result);
       if (result.id) setMirrorResponseId(result.id);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
   }, [canSubmit, selectedEmotions, intensity, context, note, createEntry, mirror, subscriptionTier, mirrorUsage, handleReset]);
 
@@ -233,7 +237,7 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  content: { padding: 24, paddingBottom: 100 },
+  content: { paddingHorizontal: 20, paddingVertical: 24, paddingBottom: 100 },
   section: { marginBottom: 28 },
   sectionTitle: {
     color: colors.text.primary,

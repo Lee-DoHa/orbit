@@ -36,11 +36,12 @@ const styles = StyleSheet.create({
   },
   tag: {
     paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface.glass,
     borderWidth: 1,
     borderColor: colors.surface.glassBorder,
+    flexShrink: 0,
   },
   tagSelected: {
     backgroundColor: colors.accent.violetGlow,

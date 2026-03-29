@@ -1,45 +1,31 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { useEffect } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { colors, borderRadius, spacing, fontSize } from '@/theme/tokens';
 
 export function MirrorLoading() {
-  const opacity = useSharedValue(0.3);
-  const scale = useSharedValue(0.95);
+  const opacity = useRef(new Animated.Value(0.3)).current;
+  const scale = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.3, { duration: 1000, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
+    const pulseOpacity = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 1000, useNativeDriver: Platform.OS !== 'web' }),
+      ])
     );
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.02, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.95, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
+    const pulseScale = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.02, duration: 1500, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(scale, { toValue: 0.95, duration: 1500, useNativeDriver: Platform.OS !== 'web' }),
+      ])
     );
+    pulseOpacity.start();
+    pulseScale.start();
+    return () => { pulseOpacity.stop(); pulseScale.stop(); };
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
+    <Animated.View style={[styles.container, { opacity, transform: [{ scale }] }]}>
       <View style={styles.glowDot} />
       <Text style={styles.text}>감정을 구조화하고 있어요...</Text>
     </Animated.View>

@@ -57,12 +57,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surface.glass,
     borderWidth: 1,
     borderColor: colors.surface.glassBorder,
     gap: 6,
+    flexShrink: 0,
   },
   chipDisabled: {
     opacity: 0.3,
@@ -70,7 +71,10 @@ const styles = StyleSheet.create({
   dot: {
     width: 8,
     height: 8,
+    minWidth: 8,
+    minHeight: 8,
     borderRadius: 4,
+    flexShrink: 0,
   },
   label: {
     color: colors.text.secondary,

@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   segment: {
     flex: 1,
     height: 44,
+    minWidth: 44,
     borderRadius: borderRadius.md,
     backgroundColor: colors.surface.glass,
     alignItems: 'center',

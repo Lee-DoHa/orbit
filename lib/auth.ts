@@ -113,14 +113,29 @@ export async function signOut(): Promise<void> {
 export async function getAccessToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!isConfigured()) return reject(new Error('Not configured'));
-    const user = getUserPool().getCurrentUser();
+    let user: CognitoUser | null;
+    try {
+      user = getUserPool().getCurrentUser();
+    } catch {
+      return reject(new Error('Pool error'));
+    }
     if (!user) return reject(new Error('Not authenticated'));
 
-    user.getSession((err: Error | null, session: CognitoUserSession | null) => {
-      if (err || !session) return reject(err || new Error('No session'));
-      if (!session.isValid()) return reject(new Error('Session expired'));
-      resolve(session.getIdToken().getJwtToken());
-    });
+    try {
+      user.getSession((err: Error | null, session: CognitoUserSession | null) => {
+        try {
+          if (err || !session) return reject(err || new Error('No session'));
+          if (!session.isValid()) return reject(new Error('Session expired'));
+          const token = session.getIdToken()?.getJwtToken();
+          if (!token) return reject(new Error('No token'));
+          resolve(token);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
@@ -135,9 +150,13 @@ export function getCurrentUser(): CognitoUser | null {
 export async function checkSession(): Promise<boolean> {
   try {
     if (!isConfigured()) return false;
+    const user = getUserPool().getCurrentUser();
+    if (!user) return false;
     await getAccessToken();
     return true;
   } catch {
+    // Clear corrupted storage on session check failure
+    try { storageBackend.clear(); } catch {}
     return false;
   }
 }
